@@ -1,0 +1,144 @@
+\documentclass[a4paper, 12pt, headsepline, twoside]{scrartcl}
+
+\newcommand{\titleDocument}{Design and Implementation of a Windows Kernel Driver for LUKS2-encrypted Volumes}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[bookmarksnumbered, pdftitle={\titleDocument}, pdfauthor={Max Ihlenfeldt}]{hyperref}
+\usepackage{geometry}
+\usepackage{capt-of}
+\usepackage{scrhack}
+\usepackage[automark, pagestyleset=standard, markcase=used]{scrlayer-scrpage}
+\usepackage{listings}
+\usepackage{tocbasic}
+\usepackage{calc}
+\usepackage{tikz}
+\usepackage{makecell}
+
+% as per Richard's recommendation
+\bibliographystyle{IEEEtran}
+
+% seems reasonable
+\geometry{left=2.5cm, right=2.5cm, top=2.5cm, bottom=2cm}
+
+% adapted from the KOMA-Script manual (chapter 5)
+\pagestyle{scrheadings}
+\ihead{\headmark}
+\ohead{\pagemark}
+\chead{}
+\cfoot[]{}
+\renewcommand*{\sectionmarkformat}{} % no section numbers in header
+
+\DeclareTOCStyleEntries[
+  raggedentrytext,
+  numwidth=0pt,
+  numsep=1ex,
+  dynnumwidth,
+  linefill=\TOCLineLeaderFill,
+]{tocline}{section, subsection, subsubsection, paragraph, subparagraph}
+
+% no sans-serif fonts for (sub)section titles
+\setkomafont{disposition}{\normalfont\bfseries}
+
+% colours for code listings
+\definecolor{mGreen}{rgb}{0, 0.6, 0}
+\definecolor{mPurple}{rgb}{0.58, 0, 0.82}
+\definecolor{mGray}{rgb}{0.4, 0.4, 0.4}
+\definecolor{backgroundColour}{rgb}{0.92, 0.92, 0.92}
+
+% configure code listings
+\lstdefinestyle{CStyle}{
+	frame=single,
+    backgroundcolor=\color{backgroundColour},   
+    commentstyle=\color{mGreen},
+    keywordstyle=\bfseries,
+    stringstyle=\color{mPurple},
+    numberstyle=\tiny\color{mGray},
+    basicstyle=\footnotesize\ttfamily,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2,
+    language=C,
+    morekeywords={UINT64, UINT8, PUINT8, VOID, PVOID, PLUKS2_VOLUME_INFO, PLUKS2_VOLUME_CRYPTO},
+}
+
+\begin{document}
+
+\thispagestyle{empty}
+
+\input{title_page}
+
+\pagenumbering{roman}
+
+\newpage
+
+\thispagestyle{empty}
+
+\input{0_abstract}
+
+\newpage
+
+\thispagestyle{empty}
+\tableofcontents
+
+\newpage
+
+\pagenumbering{arabic}
+
+\input{1_introduction}
+
+\newpage
+
+\input{2_background}
+
+\newpage
+
+\input{3_related_work}
+
+\newpage
+
+\input{4_design_and_implementation}
+
+\newpage
+
+\input{5_performance}
+
+\newpage
+
+\input{6_discussion}
+
+\newpage
+
+\input{7_conclusion}
+
+\newpage
+
+\listoffigures
+\addcontentsline{toc}{section}{List of Figures}
+
+\newpage
+
+\listoftables
+\addcontentsline{toc}{section}{List of Tables}
+
+\newpage
+
+\renewcommand{\lstlistlistingname}{List of Listings}
+\lstlistoflistings
+\addcontentsline{toc}{section}{List of Listings}
+
+\newpage
+
+\phantomsection
+\addcontentsline{toc}{section}{References}
+\bibliography{references}
+
+\end{document}

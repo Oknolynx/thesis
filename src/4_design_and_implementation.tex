@@ -1,0 +1,46 @@
+\section{Design and implementation of our driver}
+
+\subsection{Failed attempts}
+FilterManager framework
+
+Mention KMDF / UMDF and why we didn't use that if not already done in earlier section
+
+\subsection{The working WDM driver}
+Why WDM?
+
+\subsubsection{Initialization and configuration}
+\texttt{luks2filterstart.exe}
+
+\subsubsection{De-/encrypting reads and writes}
+custom AES implementation
+
+\begin{lstlisting}[style=CStyle]
+VOID
+EncryptWriteBuffer(
+    PUINT8 Buffer,
+    PLUKS2_VOLUME_INFO VolInfo,
+    PLUKS2_VOLUME_CRYPTO CryptoInfo,
+    UINT64 OrigByteOffset,
+    UINT64 Length
+)
+{
+    UINT64 Sector = OrigByteOffset / VolInfo->SectorSize;
+    UINT64 Offset = 0;
+    UINT8 Tweak[16];
+
+    while (Offset < Length) {
+        ToLeBytes(Sector, Tweak);
+        CryptoInfo->Encrypt(
+            &CryptoInfo->Xts, Buffer + Offset,
+            VolInfo->SectorSize, Tweak
+        );
+        Offset += VolInfo->SectorSize;
+        Sector += 1;
+    }
+}
+\end{lstlisting}
+
+\subsubsection{Handling other request types}
+
+\subsection{Security considerations}
+How does \texttt{cryptsetup} send the master key to \texttt{dm-crypt}?

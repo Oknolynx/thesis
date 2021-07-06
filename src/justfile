@@ -1,0 +1,13 @@
+# use Powershell instead of sh:
+set shell := ["powershell.exe", "-c"]
+
+build:
+    pdflatex --interaction=batchmode --output-directory=..\bin .\thesis.tex
+    bibtex ..\bin\thesis.aux
+    pdflatex --interaction=batchmode --output-directory=..\bin .\thesis.tex
+    pdflatex --interaction=batchmode --output-directory=..\bin .\thesis.tex
+    cp ..\bin\thesis.pdf ..
+
+clean:
+    rm -r ..\bin
+    rm ..\thesis.pdf
