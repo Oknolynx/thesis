@@ -21,6 +21,8 @@
 
 % for drawing braces
 \usetikzlibrary{decorations.pathreplacing}
+% for graphs
+\usetikzlibrary{arrows, positioning}
 
 % as per Richard's recommendation
 \bibliographystyle{IEEEtran}
@@ -62,6 +64,24 @@
 \definecolor{tBlue}{RGB}{160, 196, 255}
 \definecolor{tPurp}{RGB}{189, 178, 255}
 \definecolor{tRose}{RGB}{255, 198, 255}
+
+% TikZ styles
+% from https://texample.net/tikz/examples/borrowers-and-lenders/
+\tikzset{
+	% Define standard arrow tip
+	>=stealth',
+	% rectangular box
+	rect/.style={
+		rectangle,
+		draw=black,
+		minimum height=2em,
+		text centered
+	},
+	% arrow style
+	arrow/.style={
+		->,
+	}
+}
 
 % command for text with a tight color box behind it
 % the `\strut` makes the colorbox always full height, regardless of the height of the text inside it
@@ -129,19 +149,23 @@
 
 \newpage
 
-\input{4_design_and_implementation}
+\input{4_other_approaches}
 
 \newpage
 
-\input{5_performance}
+\input{5_design_and_implementation}
 
 \newpage
 
-\input{6_discussion}
+\input{6_performance}
 
 \newpage
 
-\input{7_conclusion}
+\input{7_discussion}
+
+\newpage
+
+\input{8_conclusion}
 
 \newpage
 

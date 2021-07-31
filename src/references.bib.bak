@@ -56,9 +56,8 @@
 @Manual{Broz2018,
   title      = {{LUKS2} On-Disk Format Specification Version 1.0.0},
   author     = {Milan Broz},
-  note       = {Visited on 2021-01-06},
+  note       = {Visited on 2021-07-31},
   year       = {2018},
-  comment    = {vviisited on 2021-06-01},
   ranking    = {rank5},
   readstatus = {read},
   url        = {https://gitlab.com/cryptsetup/LUKS2-docs/-/raw/861197a9de9cba9cc3231ad15da858c9f88b0252/luks2_doc_wip.pdf},
@@ -67,6 +66,7 @@
 @Manual{Fruwirth2018,
   title      = {{LUKS1} On-Disk Format Specification Version 1.2.3},
   author     = {Clemens Fruwirth},
+  note       = {Visited on 2021-07-31},
   year       = {2018},
   ranking    = {rank4},
   readstatus = {read},
@@ -82,6 +82,49 @@
   pages     = {37--45},
   volume    = {6},
   publisher = {Citeseer},
+}
+
+@InProceedings{Tuerpe2009,
+  author       = {T{\"u}rpe, Sven and Poller, Andreas and Steffan, Jan and Stotz, Jan-Peter and Trukenm{\"u}ller, Jan},
+  booktitle    = {International Conference on Trusted Computing},
+  title        = {Attacking the BitLocker boot process},
+  year         = {2009},
+  organization = {Springer},
+  pages        = {183--196},
+}
+
+@Article{Kornblum2009,
+  author    = {Kornblum, Jesse D},
+  journal   = {Digital Investigation},
+  title     = {Implementing bitlocker drive encryption for forensic analysis},
+  year      = {2009},
+  number    = {3-4},
+  pages     = {75--84},
+  volume    = {5},
+  publisher = {Elsevier},
+}
+
+@InProceedings{Lewis2018,
+  author    = {Lewis, Stephen G and Palumbo, Timothy},
+  booktitle = {Proceedings of the 2018 ACM SIGUCCS Annual Conference},
+  title     = {BitLocker Full-Disk Encryption: Four Years Later},
+  year      = {2018},
+  pages     = {147--150},
+}
+
+@InProceedings{Tan2020,
+  author       = {Tan, Cheng and Zhang, Lijun and Bao, Liang},
+  booktitle    = {2020 IEEE 20th International Conference on Communication Technology (ICCT)},
+  title        = {A Deep Exploration of BitLocker Encryption and Security Analysis},
+  year         = {2020},
+  organization = {IEEE},
+  pages        = {1070--1074},
+}
+
+@PhdThesis{Fruhwirth2005,
+  author = {Fruhwirth, Clemens},
+  title  = {New methods in hard disk encryption},
+  year   = {2005},
 }
 
 @Comment{jabref-meta: databaseType:bibtex;}
