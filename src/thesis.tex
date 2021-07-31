@@ -15,6 +15,12 @@
 \usepackage{calc}
 \usepackage{tikz}
 \usepackage{makecell}
+\usepackage{colortbl}
+\usepackage{framed}
+\usepackage{textcomp}
+
+% for drawing braces
+\usetikzlibrary{decorations.pathreplacing}
 
 % as per Richard's recommendation
 \bibliographystyle{IEEEtran}
@@ -47,6 +53,24 @@
 \definecolor{mGray}{rgb}{0.4, 0.4, 0.4}
 \definecolor{backgroundColour}{rgb}{0.92, 0.92, 0.92}
 
+% colours for table cells
+\definecolor{tPink}{RGB}{255, 173, 173}
+\definecolor{tOrng}{RGB}{255, 214, 165}
+\definecolor{tYlow}{RGB}{253, 255, 182}
+\definecolor{tGren}{RGB}{202, 255, 191}
+\definecolor{tLblu}{RGB}{155, 246, 255}
+\definecolor{tBlue}{RGB}{160, 196, 255}
+\definecolor{tPurp}{RGB}{189, 178, 255}
+\definecolor{tRose}{RGB}{255, 198, 255}
+
+% command for text with a tight color box behind it
+% the `\strut` makes the colorbox always full height, regardless of the height of the text inside it
+% see https://tex.stackexchange.com/questions/7530
+\newcommand{\coltxt}[2]{{\setlength{\fboxsep}{0pt}\colorbox{#1}{\strut #2}}}
+
+% for drawing a nice looking ~
+\newcommand{\nicetilde}{\raisebox{0.5ex}{\texttildelow}}
+
 % configure code listings
 \lstdefinestyle{CStyle}{
 	frame=single,
@@ -67,7 +91,7 @@
     showtabs=false,                  
     tabsize=2,
     language=C,
-    morekeywords={UINT64, UINT8, PUINT8, VOID, PVOID, PLUKS2_VOLUME_INFO, PLUKS2_VOLUME_CRYPTO},
+    morekeywords={uint8_t, uint16_t, uint32_t, uint64_t, UINT8, PUINT8, UINT64, VOID, PVOID, PLUKS2_VOLUME_INFO, PLUKS2_VOLUME_CRYPTO},
 }
 
 \begin{document}
@@ -128,12 +152,6 @@
 
 \listoftables
 \addcontentsline{toc}{section}{List of Tables}
-
-\newpage
-
-\renewcommand{\lstlistlistingname}{List of Listings}
-\lstlistoflistings
-\addcontentsline{toc}{section}{List of Listings}
 
 \newpage
 

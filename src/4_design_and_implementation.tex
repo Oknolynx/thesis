@@ -1,17 +1,19 @@
-\section{Design and implementation of our driver}
+\section{Design and implementation of our approach}
 
-\subsection{Failed attempts}
+\subsection{Failed Attempts}
 FilterManager framework
 
 Mention KMDF / UMDF and why we didn't use that if not already done in earlier section
 
-\subsection{The working WDM driver}
+\subsection{The Final WDM Driver}
 Why WDM?
 
-\subsubsection{Initialization and configuration}
+\subsubsection{Architecture}
+
+\subsubsection{Initialization and Configuration}
 \texttt{luks2filterstart.exe}
 
-\subsubsection{De-/encrypting reads and writes}
+\subsubsection{De-/encrypting Reads and Writes}
 custom AES implementation
 
 \begin{lstlisting}[style=CStyle]
@@ -40,7 +42,7 @@ EncryptWriteBuffer(
 }
 \end{lstlisting}
 
-\subsubsection{Handling other request types}
+\subsubsection{Handling Other Request Types}
 
-\subsection{Security considerations}
+\subsection{Security Considerations}
 How does \texttt{cryptsetup} send the master key to \texttt{dm-crypt}?

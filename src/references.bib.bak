@@ -56,7 +56,9 @@
 @Manual{Broz2018,
   title      = {{LUKS2} On-Disk Format Specification Version 1.0.0},
   author     = {Milan Broz},
+  note       = {Visited on 2021-01-06},
   year       = {2018},
+  comment    = {vviisited on 2021-06-01},
   ranking    = {rank5},
   readstatus = {read},
   url        = {https://gitlab.com/cryptsetup/LUKS2-docs/-/raw/861197a9de9cba9cc3231ad15da858c9f88b0252/luks2_doc_wip.pdf},
@@ -69,6 +71,17 @@
   ranking    = {rank4},
   readstatus = {read},
   url        = {https://mirrors.edge.kernel.org/pub/linux/utils/cryptsetup/LUKS_docs/on-disk-format.pdf},
+}
+
+@Article{Djordjevic2012,
+  author    = {Djordjevic, Borislav and Timcenko, Valentina},
+  journal   = {International Journal of Computers},
+  title     = {Ext4 file system in linux environment: Features and performance analysis},
+  year      = {2012},
+  number    = {1},
+  pages     = {37--45},
+  volume    = {6},
+  publisher = {Citeseer},
 }
 
 @Comment{jabref-meta: databaseType:bibtex;}
