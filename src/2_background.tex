@@ -7,18 +7,18 @@
 
 The differences between the original LUKS and LUKS2 are minor. According to \cite{Broz2018}, LUKS2 adds ``more flexible ways of storing metadata, redundant information to provide recovery in the case of corruption in a metadata area, and an interface to store externally managed metadata for integration with other tools.'' Practically, this means that LUKS2 has a different on-disk layout and, among other things, supports more password hashing algorithms (more precisely, password-based key derivation functions).
 
-The reference implementation\footnote{\label{fn:luks2referenceimpl} \url{https://gitlab.com/cryptsetup/cryptsetup}} is designed only for usage on Linux, which is why we developed a new Rust library for interacting with LUKS2 partitions. This is not a full equivalent, but only a cross-platform helper. Its task is to take care of all the cryptographic work needed before actually decrypting and encrypting data. Notably, it lacks the following features of the reference implementation:
+The reference implementation\footnote{\label{fn:background.luks2.referenceimpl} \url{https://gitlab.com/cryptsetup/cryptsetup}} is designed only for usage on Linux, which is why we developed a new Rust library for interacting with LUKS2 partitions. This is not a full equivalent, but only a cross-platform helper. Its task is to take care of all the cryptographic work needed before actually decrypting and encrypting data. Notably, it lacks the following features of the reference implementation:
 \begin{itemize}[label=\textbf{--}]
 	\item formatting new LUKS2 partitions,
 	\item modifying or repairing existing LUKS2 partitions,
 	\item converting a LUKS partition to a LUKS2 partition,
-	\item actually mounting a LUKS2 partition for read/write usage (this is what our kernel driver is for).
+	\item actually mounting a LUKS2 partition for read/write usage (this is what our kernel driver and its userspace configuration tool is for).
 \end{itemize}
 Our library does provide access to the raw decrypted user data, but the practical use of this is very limited: the decrypted data is in the format of a filesystem, e.g. FAT32, btrfs, or Ext4. Therefore a filesystem driver is needed to actually access the stored files. One way of exposing the decrypted data to the system's filesystem drivers is by transparently decrypting the data directly in the kernel, which is what our driver does (see \autoref{chap:ourapproach}).
 
 \subsubsection{On-Disk Format}
 \label{chap:background.luks2.ondisk}
-\begin{figure}[h]
+\begin{figure}[htb!]
 	\begin{tikzpicture}
 		\node [anchor=center] at (0.25, 1.5) {\footnotesize\makecell{primary\\binary header}};
 		\draw [fill={rgb:black, 1; white, 2}] (0, 0) rectangle (0.5, 1);
@@ -44,14 +44,14 @@ Our library does provide access to the raw decrypted user data, but the practica
 	]{
 		LUKS2 on-disk format (modified after \cite{Broz2018}). The complete header consists of three areas: a binary header of exactly one 4096-byte sector, JSON metadata, and the binary keyslots data. A \emph{keyslot} is an ``encrypted area on disk that contains a key'' \cite{Broz2018}. For redundancy, the binary header and the JSON metadata are stored twice. After that follow one or areas containing encrypted user data. The specification calls these areas \emph{segments}.
 	}
-	\label{fig:luks2ondisk}
+	\label{fig:background.luks2.ondisk}
 \end{figure}
 
-\autoref{fig:luks2ondisk} shows the high-level layout of a LUKS2-encrypted disk.
+\autoref{fig:background.luks2.ondisk} shows the high-level layout of a LUKS2-encrypted disk.
 
-The two binary headers have a size of exactly one sector, so that they are always written atomically. Only the first 512 bytes are actually used. The header marks the disk as following the LUKS2 specification, and contains metadata such as labels, a UUID, and a header checksum. The labels and UUID can be accessed using the \texttt{blkid}\footnote{\label{fn:blkid} \url{https://linux.die.net/man/8/blkid}} command-line tool and also be used in the \texttt{udev}\footnote{\label{fn:udev} \url{https://linux.die.net/man/8/udev}} Linux subsystem. For the detailed contents, see \autoref{fig:luks2binhdrstructure}. \autoref{fig:luks2binhdrexample} also contains an example hexdump of a binary header.
+The two binary headers have a size of exactly one sector, so that they are always written atomically. Only the first 512 bytes are actually used. The header marks the disk as following the LUKS2 specification, and contains metadata such as labels, a UUID, and a header checksum. The labels and UUID can be accessed using the \texttt{blkid}\footnote{\label{fn:background.luks2.blkid} \url{https://linux.die.net/man/8/blkid}} command-line tool and also be used in the \texttt{udev}\footnote{\label{fn:background.luks2.udev} \url{https://linux.die.net/man/8/udev}} Linux subsystem. For the detailed contents, see \autoref{fig:background.luks2.binhdrstructure}. \autoref{fig:background.luks2.binhdrexample} also contains an example hexdump of a binary header.
 
-\begin{figure}[h]
+\begin{figure}[htb!]
 	\begin{lstlisting}[style=CStyle]
 #define MAGIC_1ST "LUKS\xba\xbe"
 #define MAGIC_2ND "SKUL\xba\xbe"
@@ -83,10 +83,10 @@ struct luks2_hdr_disk {
 	]{
 		LUKS2 binary header structure from \cite{Broz2018}. Integers are stored in big-endian format, and all strings have to be null-terminated. The \texttt{magic}, \texttt{version}, and \texttt{uuid} fields are also present in the LUKS1 binary header and were placed at the same offsets as there.
 	}
-	\label{fig:luks2binhdrstructure}
+	\label{fig:background.luks2.binhdrstructure}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[htb!]
 	\ttfamily
 	\scriptsize
 	\begin{tabular}{c|*{16}{c}|l}
@@ -126,14 +126,14 @@ struct luks2_hdr_disk {
 	\caption[
 		LUKS2 binary header example
 	]{
-		LUKS2 binary header example. The fields, as described in \autoref{fig:luks2binhdrstructure}, were coloured differently to be easily distinguishable. A similar header, although with different salt and hash, can be generated by executing \texttt{fallocate -l 16M luks2.img \&\& cryptsetup luksFormat ---label 'This is an ASCII label' ---subsystem 'This is an optional secondary label' ---uuid e93dcafa-ee0b-4168-aa7c-f30474886a2e luks2.img} in a Linux shell.
+		LUKS2 binary header example. The fields, as described in \autoref{fig:background.luks2.binhdrstructure}, were coloured differently to be easily distinguishable. A similar header, although with different salt and hash, can be generated by executing \texttt{fallocate -l 16M luks2.img \&\& cryptsetup luksFormat ---label 'This is an ASCII label' ---subsystem 'This is an optional secondary label' ---uuid e93dcafa-ee0b-4168-aa7c-f30474886a2e luks2.img} in a Linux shell.
 	}
-	\label{fig:luks2binhdrexample}
+	\label{fig:background.luks2.binhdrexample}
 \end{figure}
 
-The sector containing the binary header is followed by the JSON area. This area arguably contains the metadata that is most relevant for decryption and encryption. \autoref{fig:luks2jsonobjects} contains an overview of the objects stored in JSON and their relationships. For this thesis' brevity's sake, please refer to Chapter 3.1 in \cite{Broz2018} for an example of a LUKS2 JSON area.
+The sector containing the binary header is followed by the JSON area. This area arguably contains the metadata that is most relevant for decryption and encryption. \autoref{fig:background.luks2.jsonobjects} contains an overview of the objects stored in JSON and their relationships. For this thesis' brevity's sake, please refer to Chapter 3.1 in \cite{Broz2018} for an example of a LUKS2 JSON area.
 
-\begin{figure}[h]
+\begin{figure}[htb!]
 	\center
 	\begin{tikzpicture}
 		\node       (pass) at (4, 3.5)  {\small Passphrase};
@@ -154,9 +154,9 @@ The sector containing the binary header is followed by the JSON area. This area 
 	\caption[
 		LUKS2 object schema
 	]{
-		LUKS2 object schema from \cite{Broz2018}. The most important objects are the following: \emph{keyslots}, which describe the details of how cryptographic keys are stored and encrypted; \emph{digests}, which can be used to verify that one has successfully extracted a key from a keyslot; and \emph{segments}, which describe the disk areas where the encrypted user data is stored. \autoref{fig:luks2ondisk} shows where the areas described by the keyslot and segment objects actually lie on disk.
+		LUKS2 object schema from \cite{Broz2018}. The most important objects are the following: \emph{keyslots}, which describe the details of how cryptographic keys are stored and encrypted; \emph{digests}, which can be used to verify that one has successfully extracted a key from a keyslot; and \emph{segments}, which describe the disk areas where the encrypted user data is stored. \autoref{fig:background.luks2.ondisk} shows where the areas described by the keyslot and segment objects actually lie on disk.
 	}
-	\label{fig:luks2jsonobjects}
+	\label{fig:background.luks2.jsonobjects}
 \end{figure}
 
 After the JSON area, the keyslots area is stored on the disk. This is space reserved for storing encrypted cryptographic keys. The metadata from the JSON keyslot objects describe the position of a key on the disk as well as information on how to decrypt it. 
@@ -165,30 +165,87 @@ After the JSON area, the keyslots area is stored on the disk. This is space rese
 \label{chap:background.luks2.unlocking}
 For simplicity, our LUKS2 Rust library does not support unlocking a keyslot using an external keystore defined by a token. Only unlocking via password is implemented. The library does however include support for different \emph{password-based key derivation functions (PBKDFs)}, namely \texttt{pbkdf2} with SHA-256, \texttt{argon2i}, and \texttt{argon2id}. These are all the PBKDF algorithms that are listed in the LUKS2 specification (see \cite{Broz2018}, Table 3).
 
-\cite{Fruwirth2018}, Figure 5 provides pseudocode for deriving the master key. This process is identical for LUKS and LUKS2, although theoretically other digest types than \texttt{pbkdf2} could be used in LUKS2.
+The LUKS2 specification allows for multiple segments in one partition. To make things easier, our driver only supports unlocking one segment. Therefore, in this thesis we may speak of unlocking a partition and mean unlocking one of the partition's segments.
 
-\begin{lstlisting}[language=Rust, style=boxed]
-fn decrypt_keyslot(/* ... */) -> Result<Vec<u8>, LuksError> {
-	// read area of keyslot
-	// ...
+To unlock a segment means to derive the cryptographic key that is needed for reading decrypted or writing encrypted data.
 
-	// compute master key as hash of password
+LUKS2 uses a process called \emph{anti-forensic splitting} to store the master key on the disk. This method was introduced in \cite{Fruhwirth2005}. It is used to diffuse the key's bytes into a longer sequence of bytes that has the following property: if at least one bit of the diffused sequence is changed, the key cannot be recovered. This is achieved by a clever combination of XOR and a hash function. The motivation behind this to make it easier (or possible) to dispose of an old key in such a way that it cannot be recovered from the disk. This is because it is much more feasible to partially erase a long sequence of bytes than to completely erase a short sequence. Erasing here means to overwrite the data in such a way that it cannot be recovered, which is not as trivial as one might think.
+
+\cite{Fruhwirth2005} calls the operation that splits data anti-forensically AFsplit and the recovery operation AFmerge. We will adhere to this convention (with slight variations).
+
+To necessitate the need of a password to recover the key, the data is also encrypted before it gets written to the disk. The encryption key is a hash of the password obtained by a PBKDF.
+
+The properties of anti-forensic splitting can be used when the user wants to change the password: the master key is derived using the old password and then re-encrypted with the new password. The key as it was encrypted with the old password can then be destroyed.
+
+\cite{Fruhwirth2005} presents two templates for storing keys, TKS1 and TKS2. The difference is whether the key is encrypted before or after splitting it. LUKS and LUKS2 use TKS2, which is schematically explained in \autoref{fig:background.luks2.tks2}.
+
+\todo{explain multiple keyslots and deriving the same master key using different passwords}
+
+\begin{figure}[htb!]
+	\center
+	\begin{tikzpicture}
+		\node[rect, anchor=east] (pbkdf) at (8, 4) {\small PBKDF2};
+		\node[rect]              (ciphr) at (3, 2) {\small Cipher};
+		\node[rect, anchor=west] (merge) at (8, 2) {\small AF-merge};
+		\node[rect, anchor=east] (rtcip) at (8, -0.5) {\small Real time cipher};
+
+		\draw[arrow] (ciphr)                   -- node[anchor=south, yshift=-4pt] {\small\makecell{Splitted master key}} (merge);
+		\draw[arrow] (pbkdf.west)  + (-2.5, 0) -- node[anchor=south, yshift=-4pt] {\small\makecell{Passphrase}}          (pbkdf.west);
+		\draw[arrow] (pbkdf.north) + (-0.6, 1) -- node[anchor=west]               {\small\makecell{Salt}}                +(-0.6, 0);
+		\draw[arrow] (pbkdf.north) + (0.6,  1) -- node[anchor=west]               {\small\makecell{Hash iteration rate}} +(0.6,  0);
+		\draw[arrow] (ciphr.west)  + (-2.5, 0) -- node[anchor=south, yshift=-4pt] {\small\makecell{Key storage}}         (ciphr.west);
+		\draw[arrow] (rtcip.west)  + (-4,   0) -- node[anchor=south, yshift=-4pt] {\small\makecell{Encrypted partition}} (rtcip.west);
+		\draw[arrow] (rtcip.east)              -- node[anchor=south, yshift=-4pt] {\small\makecell{Recovered partition}} +(4,    0);
+
+		\draw[arrow] (pbkdf.east) -- +(1, 0) -- +(1, -1) -| (ciphr.north);
+		\draw[arrow] (merge.east) -- +(1, 0) -- +(1, -1) -| node[anchor=east, yshift=-1.2em] {\small\makecell{Master key}} (rtcip.north);
+	\end{tikzpicture}
+	\caption[
+		TKS2 scheme
+	]{
+		TKS2 scheme from \cite{Fruhwirth2005}.
+	}
+	\label{fig:background.luks2.tks2}
+\end{figure}
+
+\cite{Fruwirth2018}, Figure 5 provides pseudocode for deriving the master key. This process is identical for LUKS and LUKS2, although theoretically the parameters of the anti-forensic splitter or the digest algorithm could be changed in LUKS2 (in the JSON area). \autoref{fig:background.luks2.masterkeydecrypt} shows the outline of an implementation of the master key derivation in Rust.
+
+\begin{figure}[htb!]
+	\begin{lstlisting}[style=RustStyle]
+fn decrypt_keyslot(
+	password: &[u8], keyslot: &LuksKeyslot, json: &LuksJson, /* ... */
+) -> Result<Vec<u8>, LuksError> {
+	let mut k = vec![
+		0; keyslot.key_size() as usize * keyslot.af.stripes() as usize
+	];
+	// read keyslot data from disk into k...
+
 	let mut pw_hash = vec![0; area.key_size() as usize];
 	match keyslot.kdf() {
-		// ...
+		// hash into pw_hash using pbkdf2, argon2i, or argon2id...
 	}
 
 	// decrypt keyslot area using the password hash as key
 	match area.key_size() {
-		// ...
+		32 => {
+			let key1 = Aes128::new_varkey(&pw_hash[..16]).unwrap();
+			let key2 = Aes128::new_varkey(&pw_hash[16..]).unwrap();
+			let xts = Xts128::<Aes128>::new(key1, key2);
+			xts.decrypt_area(&mut k, sector_size, 0, get_tweak_default);
+		},
+		// 64 byte key uses AES256 instead...
 	}
 
 	// merge and hash master key
-	let master_key = af::merge(&k, keyslot.key_size() as usize, af.stripes() as usize);
+	let master_key = af::merge(
+		&k, keyslot.key_size() as usize, af.stripes() as usize
+	);
 	let digest_actual = base64::decode(json.digests[&0].digest())?;
 	let mut digest_computed = vec![0; digest_actual.len()];
 	let salt = base64::decode(json.digests[&0].salt())?;
-	pbkdf2::pbkdf2::<Hmac<Sha256>>(&master_key, &salt, json.digests[&0].iterations(), &mut digest_computed);
+	pbkdf2::pbkdf2::<Hmac<Sha256>>(
+		&master_key, &salt, json.digests[&0].iterations(), &mut digest_computed
+	);
 
 	// compare digests
 	if digest_computed == digest_actual {
@@ -198,6 +255,13 @@ fn decrypt_keyslot(/* ... */) -> Result<Vec<u8>, LuksError> {
 	}
 }
 \end{lstlisting}
+	\caption[
+		LUKS2 master key decryption in Rust
+	]{
+		LUKS2 master key decryption in Rust. Some values are hardcoded: only the digest with index 0 is used (lines 29, 31, 33), and it is assumed that the digest algorithm is always \texttt{pbkdf2} with SHA-256 (line 32). The latter is compliant with the specification, which lists this digest algorithm as the only option, but not perfect in the sense of input validation.
+	}
+	\label{fig:background.luks2.masterkeydecrypt}
+\end{figure}
 
 \subsection{Introduction to Windows Kernel Driver Development}
 \label{chap:background.kerneldriver}
