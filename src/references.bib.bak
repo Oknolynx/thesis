@@ -194,10 +194,13 @@
   publisher = {Wiley},
   title     = {Cryptography Engineering -- Design Principles and Practical Applications},
   year      = {2010},
-  isbn      = {978-0-470-47424-2},
-  bibsource = {dblp computer science bibliography, https://dblp.org},
-  biburl    = {https://dblp.org/rec/books/daglib/0024293.bib},
-  url       = {http://eu.wiley.com/WileyCDA/WileyTitle/productCd-0470474246.html},
+}
+
+@TechReport{Fips197,
+  author      = {{National Institute of Standards and Technology}},
+  institution = {U.S. Department of Commerce},
+  title       = {{Advanced Encryption Standard (AES)}},
+  year        = {2001},
 }
 
 @Comment{jabref-meta: databaseType:bibtex;}

@@ -269,7 +269,8 @@ fn decrypt_keyslot(
 \label{chap:background.luks2.using}
 After a partition has been unlocked, i.e. after the master key of one of its segments has been decrypted, the partition is ready to be read from and written to. LUKS2 supports different segment encryption algorithms, see \autoref{fig:background.luks2.encryptionalgorithms} for a selection of them. Our driver only supports the default aes-xts-plain64 encryption. Therefore we will focus on that in this section.
 
-\todo{\cite{Ferguson2010} for explaining block cipher modes and IVs}
+The AES encryption algorithm is a block cipher for processing 128 bit data blocks \cite{Fips197}. To encrypt data longer than one block, a \emph{block cipher mode} is needed \cite{Ferguson2010}. These are encryption functions that build on a existing block cipher. When using aes-xts-plain64, LUKS2 uses the XTS block cipher mode \todo{[citation needed]}.
+\todo{\cite{Ferguson2010} for explaining IVs}
 
 \todo{plain64 means ``the initial vector is the 64-bit little-endian}\\\todo{version of the sector number, padded with zeros if necessary.'' \cite{Dmcrypt2020}} \\
 \todo{This sector number is relative to the first sector of the segment, i.e. the first sector is}\\\todo{sector 0.}
