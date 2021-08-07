@@ -2,10 +2,10 @@
 set shell := ["powershell.exe", "-c"]
 
 build:
-    pdflatex --interaction=batchmode --output-directory=..\bin .\thesis.tex
+    pdflatex --interaction=batchmode --output-directory=..\bin -shell-escape .\thesis.tex
     bibtex ..\bin\thesis.aux
-    pdflatex --interaction=batchmode --output-directory=..\bin .\thesis.tex
-    pdflatex --interaction=batchmode --output-directory=..\bin .\thesis.tex
+    pdflatex --interaction=batchmode --output-directory=..\bin -shell-escape .\thesis.tex
+    pdflatex --interaction=batchmode --output-directory=..\bin -shell-escape .\thesis.tex
     cp ..\bin\thesis.pdf ..
 
 clean:

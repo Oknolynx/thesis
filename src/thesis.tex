@@ -8,10 +8,8 @@
 \usepackage[bookmarksnumbered, pdftitle={\titleDocument}, pdfauthor={Max Ihlenfeldt}]{hyperref}
 \usepackage{geometry}
 \usepackage{capt-of}
-\usepackage{scrhack}
 \usepackage[automark, pagestyleset=standard, markcase=used]{scrlayer-scrpage}
-\usepackage{listings}
-\usepackage{listings-rust}
+\usepackage[outputdir=../bin, cachedir=../bin/minted_cache, newfloat=true]{minted}
 \usepackage{tocbasic}
 \usepackage{calc}
 \usepackage{tikz}
@@ -21,6 +19,7 @@
 \usepackage{textcomp}
 \usepackage{enumitem}
 \usepackage[section]{placeins} % keep figures in the section, see https://tex.stackexchange.com/a/35130
+\usepackage{scrhack} % this redefines some things, keep this as the last import
 
 % for drawing braces
 \usetikzlibrary{decorations.pathreplacing}
@@ -56,7 +55,7 @@
 \definecolor{mGreen}{rgb}{0, 0.6, 0}
 \definecolor{mPurple}{rgb}{0.58, 0, 0.82}
 \definecolor{mGray}{rgb}{0.4, 0.4, 0.4}
-\definecolor{backgroundColour}{rgb}{0.92, 0.92, 0.92}
+\definecolor{background}{rgb}{0.95, 0.95, 0.95}
 
 % colours for table cells
 \definecolor{tPink}{RGB}{255, 173, 173}
@@ -96,67 +95,9 @@
 % for highlighting TODOs
 \newcommand{\todo}[1]{\coltxt{red}{#1}}
 
-% configure code listings
-% modified from the listings package
-\lstdefinelanguage{OwnC}{
-	morekeywords={
-		auto, break, case, const, continue, default, do, 	else, enum, extern, for, goto,
-		if ,register, return, sizeof, static, struct, switch, typedef, union, volatile, while
-	},
-	morekeywords=[3]{
-		char, double, float, int, long, short, signed, unsigned, void, uint8_t, uint16_t,
-		uint32_t, uint64_t, UINT8, PUINT8, UINT64, VOID, PVOID
-	},
-	sensitive,
-	morecomment=[s]{/*}{*/},
-	morecomment=[l]//,
-	morestring=[b]",
-	morestring=[b]',
-	moredelim=*[directive]\#,
-	moredirectives={
-		define, elif, else, endif, error, if, ifdef, ifndef, line, include, pragma, undef, warning
-	}
-}[keywords, comments, strings, directives]
-% inspiration taken from listings-rust
-\lstdefinestyle{BaseStyle}{
-	frame=trbL,
-	basicstyle=\footnotesize\ttfamily,
-    keywordstyle=\bfseries,
-    commentstyle=\color[gray]{0.4},
-    stringstyle=\color[rgb]{0, 0, 0.5},
-    numberstyle=\tiny,
-	backgroundcolor=\color[gray]{0.97},
-	rulecolor=\color[gray]{0.90},
-	numbers=left,
-	firstnumber=auto,
-	numberblanklines=true,
-	numberstyle=\tiny,
-	frame=leftline,
-	numbersep=7pt,
-	framesep=5pt,
-	framerule=10pt,
-	xleftmargin=15pt,
-	tabsize=4,
-	keepspaces=true,
-	showspaces=false,
-	showtabs=false,
-	showstringspaces=false,
-	columns=spaceflexible,
-}
-\lstdefinestyle{CStyle}{
-	style=BaseStyle,
-    language=OwnC,
-    % morekeywords=[3]{PLUKS2_VOLUME_INFO, PLUKS2_VOLUME_CRYPTO},
-	keywordstyle=[3]\color[rgb]{0, 0.5, 0}, % primitive types
-}
-\lstdefinestyle{RustStyle}{
-	style=BaseStyle,
-	language=Rust,
-	keywordstyle=[2]\color[rgb]{0.75, 0, 0}, % traits
-	keywordstyle=[3]\color[rgb]{0, 0.5, 0},  % primitive types
-	keywordstyle=[4]\color[rgb]{0, 0.5, 0},  % type and value constructors
-	keywordstyle=[5]\color[rgb]{0, 0, 0.75}, % macros
-}
+% minted environments
+\newminted{c}{tabsize=4, bgcolor=background, fontsize=\footnotesize}
+\newminted{rust}{tabsize=4, bgcolor=background, fontsize=\footnotesize, numbers=left}
 
 \begin{document}
 
