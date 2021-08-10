@@ -179,9 +179,7 @@ To necessitate the need of a password to recover the key, the data is also encry
 
 The properties of anti-forensic splitting can be used when the user wants to change the password: the master key is derived using the old password and then re-encrypted with the new password. The key as it was encrypted with the old password can then be destroyed.
 
-\cite{Fruhwirth2005} presents two templates for storing keys, TKS1 and TKS2. The difference is whether the key is encrypted before or after splitting it. LUKS and LUKS2 use TKS2, which is schematically explained in \autoref{fig:background.luks2.tks2}. The hash function used by LUKS2 for anti-forensic splitting is SHA-256.
-
-\todo{explain multiple keyslots and deriving the same master key using different passwords}
+\cite{Fruhwirth2005} presents two templates for storing keys, TKS1 and TKS2. The difference is whether the key is encrypted before or after splitting it. LUKS and LUKS2 use TKS2, which is schematically explained in \autoref{fig:background.luks2.tks2}. The hash function used by LUKS2 for anti-forensic splitting is SHA-256. \autoref{fig:background.luks2.masterkeydecrypt} shows the outline of an implementation of TKS2 in Rust.
 
 \begin{figure}[htb!]
 	\center
@@ -209,8 +207,6 @@ The properties of anti-forensic splitting can be used when the user wants to cha
 	}
 	\label{fig:background.luks2.tks2}
 \end{figure}
-
-For a more detailed pseudocode for the master key derivation see \cite{Fruwirth2018}, Figure 5. \autoref{fig:background.luks2.masterkeydecrypt} shows the outline of an implementation of this process in Rust.
 
 \begin{figure}[htb!]
 	\begin{rustcode}
@@ -265,20 +261,36 @@ fn decrypt_keyslot(
 	\label{fig:background.luks2.masterkeydecrypt}
 \end{figure}
 
+The keyslots area on the disk is large enough to store multiple split and encrypted master keys. Thus one can configure a LUKS2 partition to be unlocked by different passwords. Unlocking then works as described in \autoref{fig:background.luks2.unlocking}.
+
+\begin{figure}[htb!]
+	\center
+	\begin{mdframed}
+		\begin{enumerate}
+			\item The user supplies a password.
+			\item One of the available keyslots is selected.
+			\item Using the password and keyslot, the master key is decrypted as described above.
+			\item The derived master key is hashed and the result compared to the corresponding digest. Which digest and what hash parameters to used is defined in the JSON section.
+			\item If the digests match, the master key has been successfully decrypted. Else go to step 2 and select a keyslot that has not been used yet.
+			\item If the master key could not be decrypted with all available keyslots, the supplied password was not correct.
+		\end{enumerate}
+	\end{mdframed}
+	\caption[
+		LUKS2 master key decryption with multiple available keyslots
+	]{
+		LUKS2 master key decryption with multiple available keyslots. LUKS2 allows defining priorities that govern the order in that the available keyslots are tried. For a more detailed pseudocode see Figure 5 in \cite{Fruwirth2018}.
+	}
+	\label{fig:background.luks2.unlocking}
+\end{figure}
+
 \subsubsection{Using an Unlocked Partition}
 \label{chap:background.luks2.using}
-After a partition has been unlocked, i.e. after the master key of one of its segments has been decrypted, the partition is ready to be read from and written to. LUKS2 supports different segment encryption algorithms, see \autoref{fig:background.luks2.encryptionalgorithms} for a selection of them. Our driver only supports the default aes-xts-plain64 encryption. Therefore we will focus on that in this section.
-
-The AES encryption algorithm is a block cipher for processing 128 bit data blocks \cite{Fips197}. To encrypt data longer than one block, a \emph{block cipher mode} is needed \cite{Ferguson2010}. These are encryption functions that build on a existing block cipher. When using aes-xts-plain64, LUKS2 uses the XTS block cipher mode \todo{[citation needed]}.
-\todo{\cite{Ferguson2010} for explaining IVs}
-
-\todo{plain64 means ``the initial vector is the 64-bit little-endian}\\\todo{version of the sector number, padded with zeros if necessary.'' \cite{Dmcrypt2020}} \\
-\todo{This sector number is relative to the first sector of the segment, i.e. the first sector is}\\\todo{sector 0.}
+After a partition has been unlocked, i.e. after the master key of one of its segments has been decrypted, the partition is ready to be read from and written to. This happens using what \autoref{fig:background.luks2.tks2} calls a real time cipher. LUKS2 supports different encryption algorithms for this purpose, see \autoref{fig:background.luks2.encryptionalgorithms} for a selection of them. Our driver only supports the default aes-xts-plain64 encryption. Therefore we will focus on that in this section.
 
 \begin{figure}[htb!]
 	\center
 	\begin{tabular}{cc}
-		\makecell{\textbf{Algorithm}\\in \texttt{dm-crypt} \cite{Dmcrypt2020} notation} & \textbf{Description} \\
+		\makecell{\textbf{Algorithm}\\in \texttt{dm-crypt} notation} & \textbf{Description} \\
 		\hline
 		aes-xts-plain64 & AES in XTS mode with sequential IV \\
 		aes-cbc-essiv:sha256 & AES in CBC mode with ESSIV IV \\
@@ -288,10 +300,16 @@ The AES encryption algorithm is a block cipher for processing 128 bit data block
 	\caption[
 		Selection of LUKS2 encryption algorithms
 	]{
-		Selection of LUKS2 encryption algorithms (modified after \cite{Broz2018}). \todo{See \cite{Dmcrypt2020} for a detailed explanation of the different elements of the algorithm notation.} \todo{cite/footnote for serpent/twofish/xts/cbc/essiv?}
+		Selection of LUKS2 encryption algorithms (modified after \cite{Broz2018}). The \texttt{dm-crypt} notation follows this format: cipher[:keycount]-chainmode-ivmode[:ivopts] \cite{Dmcrypt2020}. See \cite{Ferguson2010} for the CBC mode and the Serpent and Twofish ciphers, and \cite{Fruhwirth2005} for the ESSIV IV mode.
 	}
 	\label{fig:background.luks2.encryptionalgorithms}
 \end{figure}
+
+The AES encryption algorithm is a block cipher for processing 128 bit data blocks \cite{Fips197}. To encrypt data longer than one block, a \emph{block cipher mode} is needed \cite{Ferguson2010}. These are encryption functions that build on a existing block cipher. When using aes-xts-plain64, LUKS2 uses the XTS block cipher mode. The defining IEEE standard \cite{Ieee2019} describes it as follows: ``XTS-AES is a tweakable block cipher that acts on data units of 128 b[its] or more and uses the AES block cipher as a subroutine. The key material for XTS-AES consists of a data encryption key (used by the AES block cipher) as well as a `tweak key' that is used to incorporate the logical position of the data block into the encryption.'' This tweak key is called the \emph{initialization vector}, or IV, in the context of LUKS2. This is what the ``plain64'' in aes-xts-plain64 means: ``the initial vector is the 64-bit little-endian version of the sector number, padded with zeros if necessary'' \cite{Dmcrypt2020}. This sector number is relative to the first sector of the segment, i.e. the first sector uses an IV of 0.
+
+The need for an IV arises from a critical problem that occurs when encrypting each block separately with the same key: if some unencrypted blocks are identical, then so will be their encrypted counterparts. This can lead to leaked information about structure and contents of the plaintext \cite{Ferguson2010}.
+
+All this theory may sound complicated, but in \autoref{chap:ourapproach.final.de_encrypting} we will see that the practical usage is quite simple\footnote{\label{fn:background.luks2.simplecryptography}. The implementation of cryptographic algorithms of course remains non-trivial. Implementing AES itself has been made much easier using the AES-NI CPU instruction set, though.}.
 
 \subsection{Introduction to Windows Kernel Driver Development}
 \label{chap:background.kerneldriver}

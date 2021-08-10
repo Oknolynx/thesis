@@ -198,9 +198,22 @@
 
 @TechReport{Fips197,
   author      = {{National Institute of Standards and Technology}},
-  institution = {U.S. Department of Commerce},
+  institution = {{U.S. Department of Commerce}},
   title       = {{Advanced Encryption Standard (AES)}},
   year        = {2001},
+}
+
+@TechReport{Dworkin2013,
+  author      = {Morris Dworkin},
+  institution = {{National Institute of Standards and Technology}},
+  title       = {Recommendation for Block Cipher Modes of Operation: The {XTS-AES} Mode for Confidentiality on Storage Devices},
+  year        = {2010},
+}
+
+@Manual{Ieee2019,
+  title        = {{IEEE} Standard for Cryptographic Protection of Data on Block-Oriented Storage Devices},
+  organization = {{IEEE Std.} 1619-2018 (Revision of {IEEE Std.} 1619-2007)},
+  year         = {2019},
 }
 
 @Comment{jabref-meta: databaseType:bibtex;}
