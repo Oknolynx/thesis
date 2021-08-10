@@ -163,9 +163,7 @@ After the JSON area, the keyslots area is stored on the disk. This is space rese
 
 \subsubsection{Unlocking a Partition}
 \label{chap:background.luks2.unlocking}
-For simplicity, our LUKS2 Rust library does not support unlocking a keyslot using an external keystore defined by a token. Only unlocking via password is implemented. The library does however include support for different \emph{password-based key derivation functions (PBKDFs)}, namely \texttt{pbkdf2} with SHA-256, \texttt{argon2i}, and \texttt{argon2id}. These are all the PBKDF algorithms that are listed in the LUKS2 specification (see \cite{Broz2018}, Table 3).
-
-\todo{maybe \cite{Polasek2019} could be useful here?}
+For simplicity, our LUKS2 Rust library does not support unlocking a keyslot using an external keystore defined by a token. Only unlocking via password is implemented. The library does however include support for different \emph{password-based key derivation functions (PBKDFs)}, namely \texttt{pbkdf2} with SHA-256, \texttt{argon2i}, and \texttt{argon2id}. These are all the PBKDF algorithms that are listed in the LUKS2 specification (see \cite{Broz2018}, Table 3). The default PBKDF used by LUKS2 is \texttt{argon2i} \cite{Cryptsetup2020}.
 
 The LUKS2 specification allows for multiple segments in one partition. To make things easier, our driver only supports unlocking one segment. Therefore, in this thesis we may speak of unlocking a partition and mean unlocking one of the partition's segments.
 
@@ -309,7 +307,7 @@ The AES encryption algorithm is a block cipher for processing 128 bit data block
 
 The need for an IV arises from a critical problem that occurs when encrypting each block separately with the same key: if some unencrypted blocks are identical, then so will be their encrypted counterparts. This can lead to leaked information about structure and contents of the plaintext \cite{Ferguson2010}.
 
-All this theory may sound complicated, but in \autoref{chap:ourapproach.final.de_encrypting} we will see that the practical usage is quite simple\footnote{\label{fn:background.luks2.simplecryptography}. The implementation of cryptographic algorithms of course remains non-trivial. Implementing AES itself has been made much easier using the AES-NI CPU instruction set, though.}.
+All this theory may sound complicated, but in \autoref{chap:ourapproach.final.de_encrypting} we will see that the practical usage is quite simple\footnote{\label{fn:background.luks2.simplecryptography} The implementation of cryptographic algorithms of course remains non-trivial. Implementing AES itself has been made much easier using the AES-NI CPU instruction set, though.}.
 
 \subsection{Introduction to Windows Kernel Driver Development}
 \label{chap:background.kerneldriver}
