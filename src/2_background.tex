@@ -7,7 +7,7 @@
 
 The differences between the original LUKS and LUKS2 are minor. According to \cite{Broz2018}, LUKS2 adds ``more flexible ways of storing metadata, redundant information to provide recovery in the case of corruption in a metadata area, and an interface to store externally managed metadata for integration with other tools.'' Practically, this means that LUKS2 has a different on-disk layout and, among other things, supports more password hashing algorithms (more precisely, password-based key derivation functions).
 
-The reference implementation\footnote{\label{fn:background.luks2.referenceimpl} \url{https://gitlab.com/cryptsetup/cryptsetup}} is designed only for usage on Linux, which is why we developed a new Rust library for interacting with LUKS2 partitions. This is not a full equivalent, but only a cross-platform helper. Its task is to take care of all the cryptographic work needed before actually decrypting and encrypting data. Notably, it lacks the following features of the reference implementation:
+The reference implementation\footnote{\label{fn:background.luks2.referenceimpl} \url{https://gitlab.com/cryptsetup/cryptsetup}} is designed only for usage on Linux, which is why we developed a new library in Rust for interacting with LUKS2 partitions. This is not a full equivalent, but only a cross-platform helper. Its task is to take care of all the cryptographic work needed before actually decrypting and encrypting data (more precisely, the process described in \autoref{chap:background.luks2.unlocking}). Notably, it lacks the following features of the reference implementation:
 \begin{itemize}[label=\textbf{--}]
 	\item formatting new LUKS2 partitions,
 	\item modifying or repairing existing LUKS2 partitions,
@@ -307,15 +307,45 @@ The AES encryption algorithm is a block cipher for processing 128 bit data block
 
 The need for an IV arises from a critical problem that occurs when encrypting each block separately with the same key: if some unencrypted blocks are identical, then so will be their encrypted counterparts. This can lead to leaked information about structure and contents of the plaintext \cite{Ferguson2010}.
 
-All this theory may sound complicated, but in \autoref{chap:ourapproach.final.de_encrypting} we will see that the practical usage is quite simple\footnote{\label{fn:background.luks2.simplecryptography} The implementation of cryptographic algorithms of course remains non-trivial. Implementing AES itself has been made much easier using the AES-NI CPU instruction set, though.}.
+All this theory may sound complicated, but in \autoref{chap:ourapproach.final.de_encrypting} we will see that the practical usage is quite simple\footnote{\label{fn:background.luks2.simplecryptography} The implementation of most cryptographic algorithms like the XTS mode of course remains non-trivial. Implementing AES itself has been made much easier using the AES-NI CPU instruction set, though.}.
 
 \subsection{Introduction to Windows Kernel Driver Development}
 \label{chap:background.kerneldriver}
-This section gives an introduction on the development of Windows kernel drivers and related important concepts.
+\todo{This section gives an introduction on the development of Windows kernel drivers and}\\\todo{related important concepts.}
 
 \subsubsection{Structure and Hierarchy of the Windows Operating System}
 \label{chap:background.kerneldriver.oshierarchy}
 First, we will introduce some basic concepts of the Windows operating system that will be relevant in the following sections. Please note that we will focus on Windows 10 running on the x64 architecture, as that is the target of our driver. Some details may be different in other versions of Windows, though most information should still be valid.
+
+The Windows \emph{registry} is a database for storing system-wide and per-user configuration. It can also be used to query the current state of the system, e.g. performance counters or information on loaded device drivers \cite{Yosifovich2017}. Each data entry in the registry, called a \emph{value}, has a path, also known as its \emph{key}, and a name. This name is used to distinguish different entries stored under the same key. The keys are organized hierarchically in a tree, similar to file paths \cite{Registry2018}.
+
+Windows uses the physically available RAM to back its 64-bit address space of virtual memory. See \autoref{fig:background.kerneldriver.winvirtualmemory} for how the address range is used. Most systems have less physical RAM available than the sum of virtual memory used by all processes. The memory manager solves this problem by transferring parts of the memory to disk. This is called \emph{paging}. When a virtual address that currently resides on disk is accessed, a \emph{page fault} occurs. In that case, the data is loaded back into memory. This process is completely transparent to applications, aside from latency introduced by paging. However, this will become relevant when writing drivers, as driver code may be called when page faults are not allowed (see \autoref{chap:background.kerneldriver.wdm} for more) \cite{Yosifovich2017}.
+
+\begin{figure}[htb!]
+	\center
+	\begin{tikzpicture}
+		\node[rect, fill=tPink,     from={4.25, 3   to 7.25, 5}]   {\small\makecell{128 TB\\System Space}};
+		\node[rect, fill={gray!40}, from={4.25, 2.1 to 7.25, 2.9}] {\small Unmapped};
+		\node[rect, fill=tOrng,     from={4.25, 0   to 7.25, 2}]   {\small\makecell{128 TB\\User Process\\Space}};
+
+		\node[anchor=west] at (0.25, 0)    {\footnotesize\texttt{0x00000000'00000000}};
+		\node[anchor=west] at (0.25, 2.05) {\footnotesize\texttt{0x00008000'00000000}};
+		\node[anchor=west] at (0.25, 2.95) {\footnotesize\texttt{0xFFFF8000'00000000}};
+		\node[anchor=west] at (0.25, 5)    {\footnotesize\texttt{0xFFFFFFFF'FFFFFFFF}};
+
+		%\draw[arrow] (0, 0) -- (0, 5);
+		%\node[anchor=east, xshift=-4pt] at (0, 0) {Low addresses};
+		%\node[anchor=east, xshift=-4pt] at (0, 5) {High addresses};
+	\end{tikzpicture}
+	\caption[
+		Address space layout for 64-bit Windows 10.
+	]{
+		Address space layout (not to scale) for 64-bit Windows 10 (modified after \cite{Yosifovich2017}). % combination of elements from Figure 1-4 and 5-13 in \cite{Yosifovich2017}
+		Each process has its own copy of the user process space\footnotemark.
+	}
+	\label{fig:background.kerneldriver.winvirtualmemory}
+\end{figure}
+\footnotetext{\label{fn:background.kerneldriver.virtualmemory} Sven Peter has a nice quote on this topic on his \href{https://blog.svenpeter.dev/posts/m1_sprr_gxf/}{blog}: ``One of the kernel's tasks is to lie to each application running in userland and to tell them that they're the only one in the address space.''}
 
 \begin{itemize}
 	\item kernel vs user mode (page 23)
@@ -325,16 +355,13 @@ First, we will introduce some basic concepts of the Windows operating system tha
 		\item Executive (page 72)
 		\item Kernel (page 75)
 	\end{itemize}
-	\item Architecture overview (Figure 2-1 and or Figure 2-4)
 	\item HAL (page 79) (briefly)
-	\item registry (page 32)
 	\item mention Windows Sysinternals (esp. ProcMon, WinObj)
 	\item mention/cite Microsoft Developer Documentation
 	\item Windows SDK/API (Win32), Windows Driver Kit (page 43)
 	\item DLLs?
 	\item processes? (page 8) threads? (page 18)
 	\item WinDbg (or in a later (sub)section) (page 38)
-	\item virtual memory, paging (page 21)
 	\item Driver Verifier?
 	\item Test Mode (page 24)
 	\item Objects and handles (page 30)
@@ -345,20 +372,20 @@ First, we will introduce some basic concepts of the Windows operating system tha
 \begin{figure}[htb!]
 	\center
 	\begin{tikzpicture}
-		\node[rect, fill=tPink, from={0,7.7 to 3,8.3}]    {\small System Processes};
-		\node[rect, fill=tOrng, from={4,7.7 to 7,8.3}]    {\small Service Processes};
-		\node[rect, fill=tYlow, from={8,7.7 to 11,8.3}]   {\small User Processes};
-		\node[rect, fill=tGren, from={1.5,6.7 to 11,7.3}] {\small Subsystem DLLs};
-		\node[rect, fill=tLblu, from={0,5.7 to 11,6.3}]   {\small Ntdll.dll};
+		\node[rect, fill=tPink, from={0, 7.7   to 3, 8.3}]    {\small System Processes};
+		\node[rect, fill=tOrng, from={4, 7.7   to 7, 8.3}]    {\small Service Processes};
+		\node[rect, fill=tYlow, from={8, 7.7   to 11, 8.3}]   {\small User Processes};
+		\node[rect, fill=tGren, from={1.5, 6.7 to 11, 7.3}]   {\small Subsystem DLLs};
+		\node[rect, fill=tLblu, from={0, 5.7   to 11, 6.3}]   {\small Ntdll.dll};
 
 		\node[anchor=south] at (12.5, 5.5) {\small User mode};
 		\draw[color=red, thick] (-0.25, 5.5) -- (13.75, 5.5);
 		\node[anchor=north] at (12.5, 5.5) {\small Kernel mode};
 
-		\node[rect, fill=tBlue, from={0,4.7 to 11,5.3}] {\small Executive};
-		\node[rect, fill=tPurp, from={0,3.7 to 5,4.3}]  {\small Device Drivers};
-		\node[rect, fill=tRose, from={6,3.7 to 11,4.3}] {\small Kernel};
-		\node[rect, fill=tWhit, from={0,2.7 to 11,3.3}] {\small Hardware Abstraction Layer};
+		\node[rect, fill=tBlue,     from={0, 4.7 to 11, 5.3}] {\small Executive};
+		\node[rect, fill=tPurp,     from={0, 3.7 to 5, 4.3}]  {\small Device Drivers};
+		\node[rect, fill=tRose,     from={6, 3.7 to 11, 4.3}] {\small Kernel};
+		\node[rect, fill={gray!30}, from={0, 2.7 to 11, 3.3}] {\small Hardware Abstraction Layer};
 
 		\draw[arrow] (0.75, 7.7) -- (0.75, 6.3);
 		\draw[arrow] (2.25, 7.7) -- (2.25, 7.3);
@@ -369,7 +396,7 @@ First, we will introduce some basic concepts of the Windows operating system tha
 	\caption[
 		Simplified Windows architecture
 	]{
-		Simplified Windows architecture (modified after \cite{Yosifovich2017}).
+		Simplified Windows architecture (modified after \cite{Yosifovich2017}). \todo{explain each component very briefly?}
 	}
 	\label{fig:background.kerneldriver.winarchitecture}
 \end{figure}
@@ -381,6 +408,7 @@ page 83
 
 \begin{itemize}
 	\item IRPs and other IO stuff
+	\item non-pageable paths and locking user memory, MDLs?
 \end{itemize}
 
 \subsubsection{Communication Between Kernel and Userspace}

@@ -52,13 +52,17 @@
 % no sans-serif fonts for (sub)section titles
 \setkomafont{disposition}{\normalfont\bfseries}
 
+% make \autoref{} use "section X" for sub(sub)sections
+\let\subsectionautorefname\sectionautorefname
+\let\subsubsectionautorefname\sectionautorefname
+
 % colours for code listings
 \definecolor{mGreen}{rgb}{0, 0.6, 0}
 \definecolor{mPurple}{rgb}{0.58, 0, 0.82}
 \definecolor{mGray}{rgb}{0.4, 0.4, 0.4}
 \definecolor{background}{rgb}{0.95, 0.95, 0.95}
 
-% colours for table cells
+% colours for table cells (from https://coolors.co/ffadad-ffd6a5-fdffb6-caffbf-9bf6ff-a0c4ff-bdb2ff-ffc6ff-fffffc)
 \definecolor{tPink}{RGB}{255, 173, 173}
 \definecolor{tOrng}{RGB}{255, 214, 165}
 \definecolor{tYlow}{RGB}{253, 255, 182}

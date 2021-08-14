@@ -209,4 +209,11 @@
   year         = {2019},
 }
 
+@Manual{Cryptsetup2020,
+  title = {Frequently Asked Questions {Cryptsetup/LUKS}},
+  note  = {Visited on 2021-08-10},
+  year  = {2020},
+  url   = {https://gitlab.com/cryptsetup/cryptsetup/-/wikis/FrequentlyAskedQuestions?version_id=6297db166f8ae73c6a616ba874a12f5d43d37fd9},
+}
+
 @Comment{jabref-meta: databaseType:bibtex;}
