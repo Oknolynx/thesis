@@ -131,7 +131,7 @@ struct luks2_hdr_disk {
 	\label{fig:background.luks2.binhdrexample}
 \end{figure}
 
-The sector containing the binary header is followed by the JSON area. This area arguably contains the metadata that is most relevant for decryption and encryption. \autoref{fig:background.luks2.jsonobjects} contains an overview of the objects stored in JSON and their relationships. For this thesis' brevity's sake, please refer to Chapter 3.1 in \cite{Broz2018} for an example of a LUKS2 JSON area.
+The sector containing the binary header is followed by the JSON area. This area contains the metadata that is arguably most relevant for decryption and encryption. \autoref{fig:background.luks2.jsonobjects} contains an overview of the objects stored in JSON and their relationships. For this thesis' brevity's sake, please refer to chapter 3.1 in \cite{Broz2018} for an example of a LUKS2 JSON area.
 
 \begin{figure}[htb!]
 	\center
@@ -307,7 +307,7 @@ The AES encryption algorithm is a block cipher for processing 128 bit data block
 
 The need for an IV arises from a critical problem that occurs when encrypting each block separately with the same key: if some unencrypted blocks are identical, then so will be their encrypted counterparts. This can lead to leaked information about structure and contents of the plaintext \cite{Ferguson2010}.
 
-All this theory may sound complicated, but in \autoref{chap:ourapproach.final.de_encrypting} we will see that the practical usage is quite simple\footnote{\label{fn:background.luks2.simplecryptography} The implementation of most cryptographic algorithms like the XTS mode of course remains non-trivial. Implementing AES itself has been made much easier using the AES-NI CPU instruction set, though.}.
+All this theory may sound complicated, but in \autoref{chap:ourapproach.final.de_encrypting} we will see that the practical usage of cryptography in our driver is quite simple\footnote{\label{fn:background.luks2.simplecryptography} The implementation of cryptographic algorithms like the XTS mode of course remains non-trivial. Implementing AES itself has been made much easier using the AES-NI CPU instruction set, though.}.
 
 \subsection{Introduction to Windows Kernel Driver Development}
 \label{chap:background.kerneldriver}
@@ -319,7 +319,7 @@ First, we will introduce some basic concepts of the Windows operating system tha
 
 The Windows \emph{registry} is a database for storing system-wide and per-user configuration. It can also be used to query the current state of the system, e.g. performance counters or information on loaded device drivers \cite{Yosifovich2017}. Each data entry in the registry, called a \emph{value}, has a path, also known as its \emph{key}, and a name. This name is used to distinguish different entries stored under the same key. The keys are organized hierarchically in a tree, similar to file paths \cite{Registry2018}.
 
-Windows uses the physically available RAM to back its 64-bit address space of virtual memory. See \autoref{fig:background.kerneldriver.winvirtualmemory} for how the address range is used. Most systems have less physical RAM available than the sum of virtual memory used by all processes. The memory manager solves this problem by transferring parts of the memory to disk. This is called \emph{paging}. When a virtual address that currently resides on disk is accessed, a \emph{page fault} occurs. In that case, the data is loaded back into memory. This process is completely transparent to applications, aside from latency introduced by paging. However, this will become relevant when writing drivers, as driver code may be called when page faults are not allowed (see \autoref{chap:background.kerneldriver.wdm} for more) \cite{Yosifovich2017}.
+Windows uses the physically available RAM to back its 64-bit address space of virtual memory. See \autoref{fig:background.kerneldriver.winvirtualmemory} for how the address range is used. The addresses are grouped into so-called \emph{pages}, which are typically 4KB large. Most systems have less physical RAM available than the sum of virtual memory used by all processes. The memory manager solves this problem by transferring pages currently not in use to disk. This is called \emph{paging}. When a virtual address in a page that currently resides on disk is accessed, a \emph{page fault} occurs. In that case, the needed page is loaded back into memory. This process is completely transparent to applications, aside from latency introduced by paging. However, this will become relevant when writing drivers, as driver code may be called in situations where page faults are not allowed (see \autoref{chap:background.kerneldriver.wdm} for more) \cite{Yosifovich2017}.
 
 \begin{figure}[htb!]
 	\center
@@ -347,36 +347,16 @@ Windows uses the physically available RAM to back its 64-bit address space of vi
 \end{figure}
 \footnotetext{\label{fn:background.kerneldriver.virtualmemory} Sven Peter has a nice quote on this topic on his \href{https://blog.svenpeter.dev/posts/m1_sprr_gxf/}{blog}: ``One of the kernel's tasks is to lie to each application running in userland and to tell them that they're the only one in the address space.''}
 
-\begin{itemize}
-	\item kernel vs user mode (page 23)
-	\begin{itemize}
-		\item syscalls (explanation from page 7?)
-		\item OS model (page 46)
-		\item Executive (page 72)
-		\item Kernel (page 75)
-	\end{itemize}
-	\item HAL (page 79) (briefly)
-	\item mention Windows Sysinternals (esp. ProcMon, WinObj)
-	\item mention/cite Microsoft Developer Documentation
-	\item Windows SDK/API (Win32), Windows Driver Kit (page 43)
-	\item DLLs?
-	\item processes? (page 8) threads? (page 18)
-	\item WinDbg (or in a later (sub)section) (page 38)
-	\item Driver Verifier?
-	\item Test Mode (page 24)
-	\item Objects and handles (page 30)
-	\item Table 1-4 in \cite{Yosifovich2017} contains a list of useful tools
-	\item Table 2-5  lists commonly used function prefixes
-\end{itemize}
+\autoref{fig:background.kerneldriver.winarchitecture} shows a simplified view of the architecture of Windows. It also differentiates between \emph{user mode} and \emph{kernel mode}. The difference is that when a process is running in kernel mode, it has access to all CPU instructions, the whole system memory. Kernel mode also allows direct access to hardware. User mode, on the other hand, only allows access to a limited subset of all that. To protect the OS from user applications and to also isolate different programs from each other, user applications run in user mode. Kernel mode is reserved for OS code, such as drivers and system services. This separation ensures that an incorrectly programmed or malicious program cannot jeopardize the whole system's stability and/or data integrity \cite{Yosifovich2017}.
 
 \begin{figure}[htb!]
 	\center
 	\begin{tikzpicture}
-		\node[rect, fill=tPink, from={0, 7.7   to 3, 8.3}]    {\small System Processes};
-		\node[rect, fill=tOrng, from={4, 7.7   to 7, 8.3}]    {\small Service Processes};
-		\node[rect, fill=tYlow, from={8, 7.7   to 11, 8.3}]   {\small User Processes};
-		\node[rect, fill=tGren, from={1.5, 6.7 to 11, 7.3}]   {\small Subsystem DLLs};
-		\node[rect, fill=tLblu, from={0, 5.7   to 11, 6.3}]   {\small Ntdll.dll};
+		\node[rect, fill=tPink, from={0, 7.7   to 3, 8.3}]  {\small System Processes};
+		\node[rect, fill=tOrng, from={4, 7.7   to 7, 8.3}]  {\small Service Processes};
+		\node[rect, fill=tYlow, from={8, 7.7   to 11, 8.3}] {\small User Processes};
+		\node[rect, fill=tGren, from={1.5, 6.7 to 11, 7.3}] {\small Subsystem DLLs};
+		\node[rect, fill=tLblu, from={0, 5.7   to 11, 6.3}] {\small Ntdll.dll};
 
 		\node[anchor=south] at (12.5, 5.5) {\small User mode};
 		\draw[color=red, thick] (-0.25, 5.5) -- (13.75, 5.5);
@@ -396,10 +376,47 @@ Windows uses the physically available RAM to back its 64-bit address space of vi
 	\caption[
 		Simplified Windows architecture
 	]{
-		Simplified Windows architecture (modified after \cite{Yosifovich2017}). \todo{explain each component very briefly?}
+		Simplified Windows architecture (modified after \cite{Yosifovich2017}).
+		User processes are regular applications. The service process are responsible for hosting Windows services, such as the printer spooler or DNS client. System processes are fixed processes that are not started by the Service Control Manager. The Session Manager and the logon process are examples for system processes.
+		The subsystem dynamically linked libraries (DLLs) are responsible for translating public API functions into their corresponding internal system service calls. The latter are mostly implemented in Ntdll.dll.
+		% Windows includes several subsystems that ``expose some subset of the base Windows executive system services to application programs'' \cite{Yosifovich2017} through dynamically linked libraries (DLLs).
+		The executive takes care of managing memory, processes, and threads, as well as I/O, networking and other basic services. The kernel takes on the tasks of thread scheduling, dispatching interrupts and exceptions, and multiprocessor synchronization. Additionally, it provides routines and data structures for usage by other, higher-level components. Finally, the purpose of the Hardware Abstraction Layer (HAL) is to separate the kernel and device drivers from hardware-specific differences.
 	}
 	\label{fig:background.kerneldriver.winarchitecture}
 \end{figure}
+
+The permission checks for user mode are enforced by the processor. Switching between user and kernel mode is achieved by executing a special CPU instruction called \texttt{syscall}. Prior to that, the user code specifies which system service it wants the kernel to execute\footnote{\label{fn:background.kerneldriver.syscalls} These system services are also referred to as system calls or syscalls, especially in the context of Linux.}. When kernel mode is activated, control is transferred from the application to a special part of the operating system. Its purpose is to dispatch control to the part of the OS that implements the requested system service. When that has been completed, the OS orders the processor to switch back into user mode and hands control back to the application \cite{Yosifovich2017}.
+
+Developers of regular applications will not come into contact with syscalls. Normally, these are the responsibility of Windows API subroutines. For example, the \texttt{CreateProcess} function will instruct the OS to create a new process by executing the \texttt{NtCreateUserProcess} syscall. Because they are not meant to be used by non-OS code, these system calls are not (officially) documented\footnote{\label{fn:background.kerneldriver.syscalldoc} There are unofficial resources that attempt to map out the space of Windows syscalls, even across different versions, e.g. \url{https://j00ru.vexillium.org/syscalls/nt/64/}.} \cite{Yosifovich2017}.
+
+As mentioned before, each user process has its own private address space. In contrast to that, all kernel-mode OS components and device drivers share one area of memory. Furthermore, all user mode addresses can also be accessed from kernel mode. Pages can however be marked as read-only, a restriction which not even the kernel can circumvent \cite{Yosifovich2017}.
+
+The fact that there exists only one global kernel address space means that special care must be taken when writing code that runs in kernel mode. A single malfunctioning driver can destabilize the complete system or even introduce critical security vulnerabilities. To aid in discovering bugs in drivers, Windows provides a \emph{Driver Verifier} tool \cite{Yosifovich2017}.
+
+It is also necessary to carefully choose which code is allowed to run in kernel mode. This is why Microsoft mandates that all third-party drivers for Windows 10 must be signed by one of two accepted certification authorities. They also have to be reviewed and signed by Microsoft. For testing purposes, Windows can be configured to load self-signed drivers. This is known as \emph{test mode} \cite{Yosifovich2017}.
+
+One part of the OS that runs in kernel mode is the Windows executive, which was already mentioned in \autoref{fig:background.kerneldriver.winarchitecture}. It is responsible for multiple things \cite{Yosifovich2017}:
+\begin{itemize}
+	\item Implementing system calls: the implementations aforementioned system services or syscalls reside in the executive.
+	\item \texttt{DeviceIoControl}: \todo{look in WinDbg what exactly happens here? screenshots?}\\\todo{if screenshots mention it when explaining syscalls above}
+	\item Support routines: the executive provides implementations of functions that can be used by other kernel mode components. Some of them are documented, others are not. The latter are e.g. functions used by the boot video driver.
+	\item \todo{mention major components from page 73}
+\end{itemize}
+
+\todo{possible further content for this or later sections}
+\begin{itemize}
+	\item Kernel (page 75)
+%	\item HAL? (page 79) (briefly, if at all)
+	\item mention Windows Sysinternals (esp. ProcMon, WinObj)
+	\item mention/cite Microsoft Developer Documentation
+	\item Windows SDK/API (Win32), Windows Driver Kit (page 43)
+%	\item DLLs?
+%	\item processes? (page 8) threads? (page 18)
+	\item WinDbg (or in a later (sub)section) (page 38)
+	\item Objects and handles (page 30)
+	\item Table 1-4 in \cite{Yosifovich2017} contains a list of useful tools
+	\item Table 2-5  lists commonly used function prefixes
+\end{itemize}
 
 \subsubsection{The Windows Driver Model for Kernel Drivers}
 \label{chap:background.kerneldriver.wdm}
