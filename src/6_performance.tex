@@ -6,6 +6,31 @@
 
 \subsection{Final Experimental Setup}
 \label{chap:performance.finalsetup}
+\begin{figure}[htb!]
+	\begin{tikzpicture}
+		\draw [fill={gray!40}] (0, 0) rectangle (4, 1);
+		\node [anchor=center] at (2, 0.5) {\small\makecell{Windows partitions}};
+		\draw [fill=white] (4, 0) rectangle (8, 1);
+		\node [anchor=center] at (6, 0.5) {\small\makecell{LUKS2 partition}};
+		\draw [fill=white] (8, 0) rectangle (12, 1);
+		\node [anchor=center] at (10, 0.5) {\small\makecell{VeraCrypt partition}};
+		\draw [fill=white] (12, 0) rectangle (16, 1);
+		\node [anchor=center] at (14, 0.5) {\small\makecell{BitLocker partition}};
+
+		\draw [decorate, decoration={brace, amplitude=10pt, mirror}, yshift=-3pt]
+		(4.05, 0) -- (7.95, 0) node [black, midway, yshift=-18pt] {\small 5 GiB};
+		\draw [decorate, decoration={brace, amplitude=10pt, mirror}, yshift=-3pt]
+		(8.05, 0) -- (11.95, 0) node [black, midway, yshift=-18pt] {\small 5 GiB};
+		\draw [decorate, decoration={brace, amplitude=10pt, mirror}, yshift=-3pt]
+		(12.05, 0) -- (15.95, 0) node [black, midway, yshift=-18pt] {\small 5 GiB};
+	\end{tikzpicture}
+	\caption[
+		Disk layout of the real hardware SSD
+	]{
+		Disk layout of the real hardware SSD.
+	}
+	\label{fig:performance.finalsetup.disklayoutssd}
+\end{figure}
 
 \subsection{Results}
 \label{chap:performance.results}

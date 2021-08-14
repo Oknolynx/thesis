@@ -67,6 +67,7 @@
 \definecolor{tBlue}{RGB}{160, 196, 255}
 \definecolor{tPurp}{RGB}{189, 178, 255}
 \definecolor{tRose}{RGB}{255, 198, 255}
+\definecolor{tWhit}{RGB}{255, 255, 252}
 
 % TikZ styles
 % from https://texample.net/tikz/examples/borrowers-and-lenders/
@@ -77,13 +78,24 @@
 	rect/.style={
 		rectangle,
 		draw=black,
-		minimum height=1.75em,
+		minimum height=1.6em,
 		text centered
 	},
 	arrow/.style={
 		->,
 	}
 }
+% from https://tex.stackexchange.com/a/87993
+\makeatletter
+\tikzset{
+    from/.style args={#1 to #2}{% without transformations
+        above right={0cm of #1},% needs positioning library
+        /utils/exec=\pgfpointdiff
+            {\tikz@scan@one@point\pgfutil@firstofone(#1)\relax}
+            {\tikz@scan@one@point\pgfutil@firstofone(#2)\relax},
+        minimum width/.expanded=\the\pgf@x,
+        minimum height/.expanded=\the\pgf@y}}
+\makeatother
 
 % command for text with a tight color box behind it
 % the `\strut` makes the colorbox always full height, regardless of the height of the text inside it

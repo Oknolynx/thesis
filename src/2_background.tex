@@ -276,7 +276,7 @@ The keyslots area on the disk is large enough to store multiple split and encryp
 	\caption[
 		LUKS2 master key decryption with multiple available keyslots
 	]{
-		LUKS2 master key decryption with multiple available keyslots. LUKS2 allows defining priorities that govern the order in that the available keyslots are tried. For a more detailed pseudocode see Figure 5 in \cite{Fruwirth2018}.
+		LUKS2 master key decryption with multiple available keyslots. LUKS2 allows defining priorities that govern the order in which the available keyslots are tried. For a more detailed pseudocode see Figure 5 in \cite{Fruwirth2018}.
 	}
 	\label{fig:background.luks2.unlocking}
 \end{figure}
@@ -315,11 +315,73 @@ This section gives an introduction on the development of Windows kernel drivers 
 
 \subsubsection{Structure and Hierarchy of the Windows Operating System}
 \label{chap:background.kerneldriver.oshierarchy}
-\todo{Roughly summarize important concepts from chapters 1 and 2 of \cite{Yosifovich2017}}
+First, we will introduce some basic concepts of the Windows operating system that will be relevant in the following sections. Please note that we will focus on Windows 10 running on the x64 architecture, as that is the target of our driver. Some details may be different in other versions of Windows, though most information should still be valid.
+
+\begin{itemize}
+	\item kernel vs user mode (page 23)
+	\begin{itemize}
+		\item syscalls (explanation from page 7?)
+		\item OS model (page 46)
+		\item Executive (page 72)
+		\item Kernel (page 75)
+	\end{itemize}
+	\item Architecture overview (Figure 2-1 and or Figure 2-4)
+	\item HAL (page 79) (briefly)
+	\item registry (page 32)
+	\item mention Windows Sysinternals (esp. ProcMon, WinObj)
+	\item mention/cite Microsoft Developer Documentation
+	\item Windows SDK/API (Win32), Windows Driver Kit (page 43)
+	\item DLLs?
+	\item processes? (page 8) threads? (page 18)
+	\item WinDbg (or in a later (sub)section) (page 38)
+	\item virtual memory, paging (page 21)
+	\item Driver Verifier?
+	\item Test Mode (page 24)
+	\item Objects and handles (page 30)
+	\item Table 1-4 in \cite{Yosifovich2017} contains a list of useful tools
+	\item Table 2-5  lists commonly used function prefixes
+\end{itemize}
+
+\begin{figure}[htb!]
+	\center
+	\begin{tikzpicture}
+		\node[rect, fill=tPink, from={0,7.7 to 3,8.3}]    {\small System Processes};
+		\node[rect, fill=tOrng, from={4,7.7 to 7,8.3}]    {\small Service Processes};
+		\node[rect, fill=tYlow, from={8,7.7 to 11,8.3}]   {\small User Processes};
+		\node[rect, fill=tGren, from={1.5,6.7 to 11,7.3}] {\small Subsystem DLLs};
+		\node[rect, fill=tLblu, from={0,5.7 to 11,6.3}]   {\small Ntdll.dll};
+
+		\node[anchor=south] at (12.5, 5.5) {\small User mode};
+		\draw[color=red, thick] (-0.25, 5.5) -- (13.75, 5.5);
+		\node[anchor=north] at (12.5, 5.5) {\small Kernel mode};
+
+		\node[rect, fill=tBlue, from={0,4.7 to 11,5.3}] {\small Executive};
+		\node[rect, fill=tPurp, from={0,3.7 to 5,4.3}]  {\small Device Drivers};
+		\node[rect, fill=tRose, from={6,3.7 to 11,4.3}] {\small Kernel};
+		\node[rect, fill=tWhit, from={0,2.7 to 11,3.3}] {\small Hardware Abstraction Layer};
+
+		\draw[arrow] (0.75, 7.7) -- (0.75, 6.3);
+		\draw[arrow] (2.25, 7.7) -- (2.25, 7.3);
+		\draw[arrow] (5.5, 7.7)  -- (5.5, 7.3);
+		\draw[arrow] (9.5, 7.7)  -- (9.5, 7.3);
+		\draw[arrow] (6.25, 6.7) -- (6.25, 6.3);
+	\end{tikzpicture}
+	\caption[
+		Simplified Windows architecture
+	]{
+		Simplified Windows architecture (modified after \cite{Yosifovich2017}).
+	}
+	\label{fig:background.kerneldriver.winarchitecture}
+\end{figure}
 
 \subsubsection{The Windows Driver Model for Kernel Drivers}
 \label{chap:background.kerneldriver.wdm}
 \todo{Also explain how it gets loaded (if not done already)}
+page 83
+
+\begin{itemize}
+	\item IRPs and other IO stuff
+\end{itemize}
 
 \subsubsection{Communication Between Kernel and Userspace}
 \label{chap:background.kerneldriver.communication}
