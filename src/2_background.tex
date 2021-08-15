@@ -424,7 +424,17 @@ Another major kernel mode OS component is the Windows kernel, also already prese
 
 \subsubsection{Windows Kernel Drivers and the Windows Driver Model}
 \label{chap:background.kerneldriver.wdm}
-Windows NT 3.1 introduced a first driver model, which lacked PnP functionality. Windows 2000 introduced PnP support as well as an extended driver model known as the \emph{Windows Driver Model (WDM)} \cite{Yosifovich2017}.
+Windows kernel drivers are modules that can be loaded and run kernel-mode. They are normally found in the form of files with the \texttt{.sys} extension. Drivers can be categorized as follows \cite{Yosifovich2017}:
+\begin{descitemize}
+	\item[Device drivers] As an interface between hardware and the I/O manager, these make use of the HAL to control retrieving input from or writing output to hardware.
+	\item[File system drivers] These translate file-oriented requests into raw I/O requests.
+	\item[File system filter drivers] These process incoming I/O requests or outgoing responses before passing them to the next driver. They can also reject an operation. The driver that this thesis is about falls into this category.
+	\item[Network drivers] These either implement networking protocols, like TCP/IP, or handle the transport of file system I/O between machines on a network.
+	\item[Streaming filter drivers] These are for data stream signal processing.
+	\item[Software drivers] These are helper kernel modules for user-mode programs. They are used when a desired operation, e.g. retrieving internal system information, is only available in kernel mode.
+\end{descitemize}
+
+Drivers can be written using different models or frameworks. Windows NT 3.1 introduced the first driver model, which lacked PnP functionality. Windows 2000 introduced PnP support as well as an extended driver model known as the \emph{Windows Driver Model (WDM)} \cite{Yosifovich2017}.
 
 WDM distinguishes between three types of drivers \cite{Yosifovich2017}:
 \begin{descitemize}
@@ -433,13 +443,27 @@ WDM distinguishes between three types of drivers \cite{Yosifovich2017}:
 	\item[Filter drivers] These enhance an already existing driver or device by either adding functionality or modifying I/O requests and/or responses from other drivers. They are optional and the number of filter drivers for a device is not limited.
 \end{descitemize}
 
-In this model, the control over a device is not concentrated at one single driver, but rather shared between multiple drivers. A bus driver only informs the PnP manager about the devices connected to its bus, while the device's function driver handles the actual device manipulation and control \cite{Yosifovich2017}.
+In this model, the control over a device is not concentrated at one single driver, but rather shared between multiple drivers. A bus driver only informs the PnP manager about the devices connected to its bus, while the device's function driver handles the actual device manipulation and control. The drivers responsible for a device form a hierarchy called the \emph{device stack}. This defines the order in which the drivers process incoming and outgoing messages to or from the device: the uppermost driver receives incoming requests first and the lowermost one receives them last. For outgoing driver responses, this order is reversed \cite{Yosifovich2017}. See \autoref{fig:background.kerneldriver.devicestack} for an example of how such a device stack can look.
 
+\begin{figure}[htb!]
+	\center
+	\includegraphics[scale=0.7]{../img/background.kerneldriver.devicestack.png}
+	\caption[
+		Example of a device stack for a storage volume
+	]{
+		Example of a device stack for a storage volume\footnotemark (Screenshot). \todo{Re-take screenshot on a 4K display} The official descriptions of the drivers listed in this example are, from top to bottom: ``Volume Shadow Copy driver'', ``Volume driver'', ``I/O rate control filter'', ``BitLocker Drive Encryption Driver'', and ``Volume Manager Driver''. As can be seen under the appropriate registry key\footnotemark, \texttt{fvevol} and \texttt{iorate} are lower filter drivers and \texttt{volsnap} is an upper filter driver. This leaves \texttt{volume} as the function driver and \texttt{volmgr} as the bus driver.
+	}
+	\label{fig:background.kerneldriver.devicestack}
+\end{figure}
+\footnotetext{\label{fn:background.kerneldriver.devicestack} This can be viewed for any device in the Windows Device Manager as follows: open the device's properties, navigate to the ``Details'' tab and select the ``Device stack'' property. You may need to check the ``Show hidden devices'' option in the Device Manager's ``View'' menu to see the desired device. \todo{ensure correct position}}
+\footnotetext{\label{fn:background.kerneldriver.registryvolume} \texttt{HKLM\textbackslash SYSTEM\textbackslash CurrentControlSet\textbackslash Control\textbackslash Class\textbackslash {71a27cdd-812a-11d0-bec7-08002be2092f}}, where \texttt{HKLM} stands for \texttt{HKEY\_LOCAL\_MACHINE}. Later on in this section \todo{change if new subsubsection} we will talk about the registry's role in driver management in more detail. \todo{ensure correct position}}
+
+\todo{TODOs for this or later sections:}
 \begin{itemize}
-	\item device stack, show example from windows device manager
 	\item explain how drivers are loaded (configuration via registry), order of loading etc.
-	\item IRPs and other IO stuff
-	\item non-pageable paths and locking user memory, MDLs?
+	\item IRPs and other IO stuff, Figure 6-34
+	\item the different contexts driver code can run in (page 82)
+	\item non-pageable paths and locking user memory, MDLs? DPCs, ALPCs (they're not relevant for our driver, I think)?
 \end{itemize}
 
 \todo{mention after explaining device stacks:} Filter drivers can be ``placed above or below a function driver and above a bus driver.''
