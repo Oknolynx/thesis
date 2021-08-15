@@ -163,13 +163,13 @@ After the JSON area, the keyslots area is stored on the disk. This is space rese
 
 \subsubsection{Unlocking a Partition}
 \label{chap:background.luks2.unlocking}
-For simplicity, our LUKS2 Rust library does not support unlocking a keyslot using an external keystore defined by a token. Only unlocking via password is implemented. The library does however include support for different \emph{password-based key derivation functions (PBKDFs)}, namely \texttt{pbkdf2} with SHA-256, \texttt{argon2i}, and \texttt{argon2id}. These are all the PBKDF algorithms that are listed in the LUKS2 specification (see \cite{Broz2018}, Table 3). The default PBKDF used by LUKS2 is \texttt{argon2i} \cite{Cryptsetup2020}.
+For simplicity, our LUKS2 Rust library does not support unlocking a keyslot using an external keystore defined by a token, even though \autoref{fig:background.luks2.jsonobjects} mentions this possibility. Only unlocking via password is implemented. The library does however include support for different \emph{password-based key derivation functions (PBKDFs)}, namely \texttt{pbkdf2} with SHA-256, \texttt{argon2i}, and \texttt{argon2id}. These are all the PBKDF algorithms that are listed in the LUKS2 specification (see \cite{Broz2018}, Table 3). The default PBKDF used by LUKS2 is \texttt{argon2i} \cite{Cryptsetup2020}. In the following paragraphs, it will become apparent what PBKDFs are used for in LUKS2\footnote{\label{fn:background.luks2.pbkdfs} It will also turn out that they are quite aptly named.}.
 
 The LUKS2 specification allows for multiple segments in one partition. To make things easier, our driver only supports unlocking one segment. Therefore, in this thesis we may speak of unlocking a partition and mean unlocking one of the partition's segments.
 
 To unlock a segment means to derive the cryptographic key that is needed for reading decrypted or writing encrypted data. This key is called the segment's \emph{master key}.
 
-LUKS2 uses a process called \emph{anti-forensic splitting} to store the master key on the disk. This method was introduced in \cite{Fruhwirth2005}. It is used to diffuse the key's bytes into a longer sequence of bytes that has the following property: if at least one bit of the diffused sequence is changed, the key cannot be recovered. This is achieved by a clever combination of XOR and a hash function. The motivation behind this to make it easier (or possible) to dispose of an old key in such a way that it cannot be recovered from the disk. This is because it is much more feasible to partially erase a long sequence of bytes than to completely erase a short sequence. Erasing here means to overwrite the data in such a way that it cannot be recovered, which is not as trivial as one might think.
+LUKS2 uses a process called \emph{anti-forensic splitting} to store the master key on disk. This method was introduced in \cite{Fruhwirth2005}. It is used to diffuse the key's bytes into a longer sequence of bytes that has the following property: if at least one bit of the diffused sequence is changed, the key cannot be recovered. This is achieved by a clever combination of XOR and a hash function. The motivation behind this to make it easier (or possible) to dispose of an old key in such a way that it cannot be recovered from the disk. This is because it is much more feasible to partially erase a long sequence of bytes than to completely erase a short sequence. Erasing here means to overwrite the data in such a way that it cannot be recovered, which is not as trivial as one might think.
 
 \cite{Fruhwirth2005} calls the operation that splits data anti-forensically AFsplit and the recovery operation AFmerge. We will adhere to this convention (with slight variations).
 
@@ -303,7 +303,9 @@ After a partition has been unlocked, i.e. after the master key of one of its seg
 	\label{fig:background.luks2.encryptionalgorithms}
 \end{figure}
 
-The AES encryption algorithm is a block cipher for processing 128 bit data blocks \cite{Fips197}. To encrypt data longer than one block, a \emph{block cipher mode} is needed \cite{Ferguson2010}. These are encryption functions that build on a existing block cipher. When using aes-xts-plain64, LUKS2 uses the XTS block cipher mode. The defining IEEE standard \cite{Ieee2019} describes it as follows: ``XTS-AES is a tweakable block cipher that acts on data units of 128 b[its] or more and uses the AES block cipher as a subroutine. The key material for XTS-AES consists of a data encryption key (used by the AES block cipher) as well as a `tweak key' that is used to incorporate the logical position of the data block into the encryption.'' This tweak key is called the \emph{initialization vector}, or IV, in the context of LUKS2. This is what the ``plain64'' in aes-xts-plain64 means: ``the initial vector is the 64-bit little-endian version of the sector number, padded with zeros if necessary'' \cite{Dmcrypt2020}. This sector number is relative to the first sector of the segment, i.e. the first sector uses an IV of 0.
+The AES encryption algorithm is a block cipher for processing 128 bit data blocks \cite{Fips197}. This means that AES takes a key and 128 bits, or 16 bytes, of data, and generates 16 bytes of ciphertext. Using the same key, this ciphertext can be decrypted back to the original plaintext data. The key can be 128, 192, or 256 bits long. The three variants of AES, each using a different key size, are called AES-128, AES-192, and AES-256.
+
+To encrypt data longer than one block, a \emph{block cipher mode} is needed \cite{Ferguson2010}. These are encryption functions that build on a existing block cipher. When using aes-xts-plain64, LUKS2 uses the XTS block cipher mode. The defining IEEE standard \cite{Ieee2019} describes it as follows: ``XTS-AES is a tweakable block cipher that acts on data units of 128 b[its] or more and uses the AES block cipher as a subroutine. The key material for XTS-AES consists of a data encryption key (used by the AES block cipher) as well as a `tweak key' that is used to incorporate the logical position of the data block into the encryption.'' This tweak key is called the \emph{initialization vector}, or IV, in the context of LUKS2. This is what the ``plain64'' in aes-xts-plain64 means: ``the initial vector is the 64-bit little-endian version of the sector number, padded with zeros if necessary'' \cite{Dmcrypt2020}. This sector number is relative to the first sector of the segment, i.e. the first sector uses an IV of 0.
 
 The need for an IV arises from a critical problem that occurs when encrypting each block separately with the same key: if some unencrypted blocks are identical, then so will be their encrypted counterparts. This can lead to leaked information about structure and contents of the plaintext \cite{Ferguson2010}.
 
@@ -315,7 +317,15 @@ All this theory may sound complicated, but in \autoref{chap:ourapproach.final.de
 
 \subsubsection{Structure and Hierarchy of the Windows Operating System}
 \label{chap:background.kerneldriver.oshierarchy}
+% possible further content for this or later sections
+% - WinDbg (or in a later (sub)section) (page 38)
+% - DLLs?
+% - processes? (page 8) threads? (page 18)
 First, we will introduce some basic concepts of the Windows operating system that will be relevant in the following sections. Please note that we will focus on Windows 10 running on the x64 architecture, as that is the target of our driver. Some details may be different in other versions of Windows, though most information should still be valid.
+
+The definitive reference for all detailed information on the inner workings of Windows is \cite{Yosifovich2017}. The online documentation of the Windows SDK\footnote{\label{fn:background.kerneldriver.sdkdoc} \url{https://docs.microsoft.com/en-us/windows/apps/desktop}} and the Windows Driver Kit\footnote{\label{fn:background.kernekdriver.wdkdoc} \url{https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi}} (WDK) both provide valuable information. It may also sometimes be useful to directly look at the data structure definitions provided by the WDK header files (\texttt{ntddk.h}, \texttt{ntifs.h}, and \texttt{wdm.h} are the most useful) \cite{Yosifovich2017}.
+
+There are also some invaluable tools to directly take a look at OS internals. Most of them are from the Sysinternals\footnote{\label{fn:background.kerneldriver.sysinternals} The executables can be downloaded from \url{https://live.sysinternals.com} and are accompanied by documentation in \cite{Russinovich2016}.} Suite, others are included with Windows. See table 1-4 in \cite{Yosifovich2017} for a more detailed compilation.
 
 The Windows \emph{registry} is a database for storing system-wide and per-user configuration. It can also be used to query the current state of the system, e.g. performance counters or information on loaded device drivers \cite{Yosifovich2017}. Each data entry in the registry, called a \emph{value}, has a path, also known as its \emph{key}, and a name. This name is used to distinguish different entries stored under the same key. The keys are organized hierarchically in a tree, similar to file paths \cite{Registry2018}.
 
@@ -345,7 +355,7 @@ Windows uses the physically available RAM to back its 64-bit address space of vi
 	}
 	\label{fig:background.kerneldriver.winvirtualmemory}
 \end{figure}
-\footnotetext{\label{fn:background.kerneldriver.virtualmemory} Sven Peter has a nice quote on this topic on his \href{https://blog.svenpeter.dev/posts/m1_sprr_gxf/}{blog}: ``One of the kernel's tasks is to lie to each application running in userland and to tell them that they're the only one in the address space.''}
+\footnotetext{\label{fn:background.kerneldriver.virtualmemory} Sven Peter has a nice quote on this topic on his \href{https://blog.svenpeter.dev/posts/m1_sprr_gxf/}{blog}: ``One of the kernel's tasks is to lie to each application running in userland and to tell them that they're the only one in the address space.'' \todo{ensure correct position}}
 
 \autoref{fig:background.kerneldriver.winarchitecture} shows a simplified view of the architecture of Windows. It also differentiates between \emph{user mode} and \emph{kernel mode}. The difference is that when a process is running in kernel mode, it has access to all CPU instructions, the whole system memory. Kernel mode also allows direct access to hardware. User mode, on the other hand, only allows access to a limited subset of all that. To protect the OS from user applications and to also isolate different programs from each other, user applications run in user mode. Kernel mode is reserved for OS code, such as drivers and system services. This separation ensures that an incorrectly programmed or malicious program cannot jeopardize the whole system's stability and/or data integrity \cite{Yosifovich2017}.
 
@@ -380,7 +390,7 @@ Windows uses the physically available RAM to back its 64-bit address space of vi
 		User processes are regular applications. The service process are responsible for hosting Windows services, such as the printer spooler or DNS client. System processes are fixed processes that are not started by the Service Control Manager. The Session Manager and the logon process are examples for system processes.
 		The subsystem dynamically linked libraries (DLLs) are responsible for translating public API functions into their corresponding internal system service calls. The latter are mostly implemented in Ntdll.dll.
 		% Windows includes several subsystems that ``expose some subset of the base Windows executive system services to application programs'' \cite{Yosifovich2017} through dynamically linked libraries (DLLs).
-		The executive takes care of managing memory, processes, and threads, as well as I/O, networking and other basic services. The kernel takes on the tasks of thread scheduling, dispatching interrupts and exceptions, and multiprocessor synchronization. Additionally, it provides routines and data structures for usage by other, higher-level components. Finally, the purpose of the Hardware Abstraction Layer (HAL) is to separate the kernel and device drivers from hardware-specific differences.
+		The executive and kernel are explained in detail later on. Finally, the purpose of the Hardware Abstraction Layer (HAL) is to separate the kernel and device drivers from hardware-specific differences. It is intended to be used by device drivers and therefore largely documented in the WDK.
 	}
 	\label{fig:background.kerneldriver.winarchitecture}
 \end{figure}
@@ -397,25 +407,19 @@ It is also necessary to carefully choose which code is allowed to run in kernel 
 
 One part of the OS that runs in kernel mode is the Windows executive, which was already mentioned in \autoref{fig:background.kerneldriver.winarchitecture}. It is responsible for multiple things \cite{Yosifovich2017}:
 \begin{itemize}
-	\item Implementing system calls: the implementations aforementioned system services or syscalls reside in the executive.
-	\item \texttt{DeviceIoControl}: \todo{look in WinDbg what exactly happens here? screenshots?}\\\todo{if screenshots mention it when explaining syscalls above}
-	\item Support routines: the executive provides implementations of functions that can be used by other kernel mode components. Some of them are documented, others are not. The latter are e.g. functions used by the boot video driver.
-	\item \todo{mention major components from page 73}
+	\item The implementations of the aforementioned system services reside in the executive.
+	\item \texttt{DeviceIoControl}: not sure what the book means here, this just calls the NtDeviceIoControlFile syscall? \todo{look in VM with WinDbg what exactly happens here? screenshots?}\\\todo{if screenshots mention it when explaining syscalls above, may be a nice example}
+	\item The executive also provides implementations of functions that can be used by other kernel mode components. Some of them are documented, others are not. They generally fall into one of four categories: managing Windows executive objects that represent OS resources; message passing between client and server processes on the same machine; run-time helpers for e.g. processing strings or converting datatypes; and general support routines for allocating and accessing memory as well as some synchronization mechanisms, e.g. fast mutexes.
+	\item The executive can be categorized into different components, of which the following are most relevant when developing a device driver: the I/O manager, the Plug and Play (PnP) manager, and the Power manager. The functions exported by these components generally follow a naming scheme were their names start with \texttt{Io}, \texttt{Pp}, and \texttt{Po}, respectively. Please refer to table 2-5 in \cite{Yosifovich2017} for a more exhaustive list of commonly used prefixes of function names.
+	\item Shareable resources, e.g. files, processes, and events, are represented as objects by the executive to user mode code. The state of the represented resource is captured in data fields called the object's attributes. Objects are \emph{opaque}, i.e. their attributes can only be accessed through object methods. This makes the internal implementations of objects easily changeable\footnote{\label{background.kerneldriver.oop} One can see why these representations were named objects, as they follow some of the core concepts of object-oriented programming.}. The object methods may also implement certain security and access checks. A reference to a object is called a \emph{handle}. Keeping track of these references allows the system to automatically recognize and deallocate objects that are no longer in use.
 \end{itemize}
 
-\todo{possible further content for this or later sections}
+Another major kernel mode OS component is the Windows kernel, also already presented in \autoref{fig:background.kerneldriver.winarchitecture}. Its tasks include the following \cite{Yosifovich2017}:
 \begin{itemize}
-	\item Kernel (page 75)
-%	\item HAL? (page 79) (briefly, if at all)
-	\item mention Windows Sysinternals (esp. ProcMon, WinObj)
-	\item mention/cite Microsoft Developer Documentation
-	\item Windows SDK/API (Win32), Windows Driver Kit (page 43)
-%	\item DLLs?
-%	\item processes? (page 8) threads? (page 18)
-	\item WinDbg (or in a later (sub)section) (page 38)
-	\item Objects and handles (page 30)
-	\item Table 1-4 in \cite{Yosifovich2017} contains a list of useful tools
-	\item Table 2-5  lists commonly used function prefixes
+	\item It takes over the task of thread scheduling and (multi-processor) synchronization and also dispatches interrupts and exceptions. Aside from that, it avoids making policy decisions, and leaves this to the executive.
+	\item In general, the one of the kernel's jobs is to conceal some of the differences of the different hardware architectures that Windows supports. It is assisted in this task by the HAL.
+	\item Intended for usage by other, higher-level components, including the executive, it provides low-level routines and basic data structures. These are partly documented and may be used in device drivers. The function names all start with the \texttt{Ke} prefix.
+	\item The exposed data structures are called \emph{kernel objects}. These are simpler than the executive's objects and therefore have no overhead for e.g. manipulation via handles or security checks. They are the building blocks for most executive-level objects.
 \end{itemize}
 
 \subsubsection{The Windows Driver Model for Kernel Drivers}
