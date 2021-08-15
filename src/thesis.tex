@@ -76,8 +76,13 @@
 \definecolor{tRose}{RGB}{255, 198, 255}
 \definecolor{tWhit}{RGB}{255, 255, 252}
 
-% TikZ styles
-% from https://texample.net/tikz/examples/borrowers-and-lenders/
+% for itemized descriptions (modified from https://tex.stackexchange.com/a/266229)
+\newenvironment{descitemize}{\begin{itemize}}{\end{itemize}}
+\expandafter\def\expandafter\descitemize\expandafter{%
+ \descitemize \let\olditem\item
+  \def\item[##1]{\olditem \textbf{##1} \hspace{0.2em}}}
+
+% TikZ styles (from https://texample.net/tikz/examples/borrowers-and-lenders)
 \tikzset{
 	% Define standard arrow tip
 	>=stealth',
