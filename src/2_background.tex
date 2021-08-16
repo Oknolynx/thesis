@@ -343,7 +343,7 @@ After a partition has been unlocked, i.e. after the master key of one of its seg
 	\label{tbl:background.luks2.encryptionalgorithms}
 \end{table}
 
-The AES encryption algorithm is a block cipher for processing 128 bit data blocks \cite{Fips197}. This means that AES takes a key and 128 bits, or 16 bytes, of data, and generates 16 bytes of ciphertext. Using the same key, this ciphertext can be decrypted back to the original plaintext data. The key can be 128, 192, or 256 bits long. The three variants of AES, each using a different key size, are called AES-128, AES-192, and AES-256.
+The AES encryption algorithm is a block cipher for processing 128 bit data blocks \cite{Fips197}. This means that AES takes a key and 128 bits, or 16 bytes, of data, and generates 16 bytes of encrypted data, called ciphertext. Using the same key, this ciphertext can be decrypted back to the original plaintext data. The key can be 128, 192, or 256 bits long. The three variants of AES, each using a different key size, are called AES-128, AES-192, and AES-256.
 
 To encrypt data longer than one block, a \emph{block cipher mode} is needed \cite{Ferguson2010}. These are encryption functions that build on a existing block cipher. When using aes-xts-plain64, LUKS2 uses the XTS block cipher mode. The defining IEEE standard \cite{Ieee2019} describes it as follows: ``XTS-AES is a tweakable block cipher that acts on data units of 128 b[its] or more and uses the AES block cipher as a subroutine. The key material for XTS-AES consists of a data encryption key (used by the AES block cipher) as well as a `tweak key' that is used to incorporate the logical position of the data block into the encryption.'' This tweak key is called the \emph{initialization vector}, or IV, in the context of LUKS2. This is what the ``plain64'' in aes-xts-plain64 means: ``the initial vector is the 64-bit little-endian version of the sector number, padded with zeros if necessary'' \cite{Dmcrypt2020}. This sector number is relative to the first sector of the segment, i.e. the first sector uses an IV of 0.
 
@@ -353,7 +353,7 @@ All this theory may sound complicated, but in \autoref{chap:ourapproach.final.de
 
 \subsection{Introduction to Windows Kernel Driver Development}
 \label{chap:background.kerneldriver}
-\todo{This section gives an introduction on the development of Windows kernel drivers and}\\\todo{related important concepts.}
+\todo{This section gives an introduction on the development of Windows kernel drivers and}\\\todo{important related background information and concepts.}
 
 \subsubsection{Structure and Hierarchy of the Windows Operating System}
 \label{chap:background.kerneldriver.oshierarchy}
@@ -363,7 +363,7 @@ All this theory may sound complicated, but in \autoref{chap:ourapproach.final.de
 % - processes? (page 8) threads? (page 18)
 First, we will introduce some basic concepts of the Windows operating system that will be relevant in the following sections. Please note that we will focus on Windows 10 running on the x64 architecture, as that is the target of our driver. Some details may be different in other versions of Windows, though most information should still be valid.
 
-The definitive reference for all detailed information on the inner workings of Windows is \cite{Yosifovich2017}. The online documentation of the Windows SDK\footnote{\label{fn:background.kerneldriver.sdkdoc} \url{https://docs.microsoft.com/en-us/windows/apps/desktop}} and the Windows Driver Kit\footnote{\label{fn:background.kernekdriver.wdkdoc} \url{https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi}} (WDK) both provide valuable information. It may also sometimes be useful to directly look at the data structure definitions provided by the WDK header files (\texttt{ntddk.h}, \texttt{ntifs.h}, and \texttt{wdm.h} are the most useful) \cite{Yosifovich2017}.
+The definitive reference for all detailed information on the inner workings of Windows is \cite{Yosifovich2017}. The online documentation of the Windows SDK\footnote{\label{fn:background.kerneldriver.sdkdoc} \url{https://docs.microsoft.com/en-us/windows/apps/desktop}} and the Windows Driver Kit\footnote{\label{fn:background.kerneldriver.wdkdoc} \url{https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi}} (WDK) both provide valuable information. It may also sometimes be useful to directly look at the data structure definitions provided by the WDK header files (\texttt{ntddk.h}, \texttt{ntifs.h}, and \texttt{wdm.h} are the most useful) \cite{Yosifovich2017}.
 
 There are also some invaluable tools to directly take a look at OS internals. Most of them are from the Sysinternals\footnote{\label{fn:background.kerneldriver.sysinternals} The executables can be downloaded from \url{https://live.sysinternals.com} and are accompanied by documentation in \cite{Russinovich2016}.} Suite, others are included with Windows. See table 1-4 in \cite{Yosifovich2017} for a more detailed compilation.
 
@@ -474,7 +474,7 @@ Windows kernel drivers are modules that can be loaded and run kernel-mode. They 
 	\item[Software drivers] These are helper kernel modules for user-mode programs. They are used when a desired operation, e.g. retrieving internal system information, is only available in kernel mode.
 \end{descitemize}
 
-Drivers can be written using different models or frameworks. Windows NT 3.1 introduced the first driver model, which lacked PnP functionality. Windows 2000 introduced PnP support as well as an extended driver model known as the \emph{Windows Driver Model (WDM)} \cite{Yosifovich2017}.
+Drivers can be written using different models or frameworks. Windows NT 3.1 introduced the first driver model, which lacked PnP functionality. Windows 2000 introduced PnP support as well as an extended driver model known as the \emph{Windows Driver Model (WDM)} \cite{Yosifovich2017}. We will focus on WDM in this section, because that is the framework our driver uses (see \autoref{chap:ourapproach.final}). But there also exist other models and frameworks for Windows driver development, such as the Windows Driver Foundation (WDF). It tries to simplify things and provides the Kernel-Mode Driver Framework (KMDF) and the User-Mode Driver Framework (UMDF) \cite{Yosifovich2017}. We will explore some of the differences between them and WDM in \autoref{chap:ourapproach.failed}.
 
 WDM distinguishes between three types of drivers \cite{Yosifovich2017}:
 \begin{descitemize}
@@ -589,15 +589,19 @@ Examples of subkeys of each of these keys are shown in \autoref{fig:background.k
 	\label{fig:background.kerneldriver.registry}
 \end{figure}
 
-\todo{TODOs for this or later sections:}
+\subsubsection{Important Concepts for Kernel Driver Development}
+\label{chap:background.kerneldriver.concepts}
+The goal of this section is to explain some concepts that are relevant when developing a file system filter driver. They concern memory access, thread contexts, the kernel's I/O system, and communication between kernel and user mode. \todo{may need updating in the future}
+
 \begin{itemize}
+	\item locking user memory, MDLs
 	\item IRPs and other IO stuff, Figure 6-34
 	\item the different contexts driver code can run in (page 82)
-	\item non-pageable paths and locking user memory, MDLs? DPCs, ALPCs (they're not relevant for our driver, I think)?
+	\item non-pageable paths
+	\item DPCs, ALPCs (they're not relevant for our driver, I think)?
+	\item communication between kernel and userspace via ports
 \end{itemize}
 
-There also exist other models and frameworks for Windows driver development: the Windows Driver Foundation (WDF) tries to simplify things and provides the Kernel-Mode Driver Framework (KMDF) and the User-Mode Driver Framework (UMDF) \cite{Yosifovich2017}. We will explore some of the differences between them and WDM in \autoref{chap:ourapproach.failed}.
-
-\subsubsection{Communication Between Kernel and Userspace}
-\label{chap:background.kerneldriver.communication}
-\todo{Via ports}
+\subsubsection{Debugging Kernel Drivers}
+\label{chap:background.kerneldriver.debugging}
+\todo{WinDbg (or in a later (sub)section) (page 38)}
