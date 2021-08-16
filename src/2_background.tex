@@ -309,16 +309,16 @@ The keyslots area on the disk is large enough to store multiple split and encryp
 	\caption[
 		LUKS2 master key decryption with multiple available keyslots
 	]{
-		LUKS2 master key decryption with multiple available keyslots. LUKS2 allows defining priorities that govern the order in which the available keyslots are tried. For a more detailed pseudocode see Figure 5 in \cite{Fruwirth2018}.
+		LUKS2 master key decryption with multiple available keyslots. LUKS2 also allows defining priorities that govern the order in which the available keyslots are tried. For a more detailed pseudocode see Figure 5 in \cite{Fruwirth2018}.
 	}
 	\label{fig:background.luks2.unlocking}
 \end{figure}
 
 \subsubsection{Using an Unlocked Partition}
 \label{chap:background.luks2.using}
-After a partition has been unlocked, i.e. after the master key of one of its segments has been decrypted, the partition is ready to be read from and written to. This happens using what \autoref{fig:background.luks2.tks2} calls a real time cipher. LUKS2 supports different encryption algorithms for this purpose, see \autoref{fig:background.luks2.encryptionalgorithms} for a selection of them. Our driver only supports the default aes-xts-plain64 encryption. Therefore, we will focus on that in this section.
+After a partition has been unlocked, i.e. after the master key of one of its segments has been decrypted, the partition is ready to be read from and written to. This happens using what \autoref{fig:background.luks2.tks2} calls a real time cipher. LUKS2 supports different encryption algorithms for this purpose, see \autoref{tbl:background.luks2.encryptionalgorithms} for a selection of them. Our driver only supports the default aes-xts-plain64 encryption. Therefore, we will focus on that in this section.
 
-\begin{figure}[htb!]
+\begin{table}[htb!]
 	\center
 	\def\arraystretch{1.25}
 	\begin{NiceTabular}{cc}
@@ -340,8 +340,8 @@ After a partition has been unlocked, i.e. after the master key of one of its seg
 	]{
 		Selection of LUKS2 encryption algorithms (modified after \cite{Broz2018}). The \texttt{dm-crypt} notation follows this format: cipher[:keycount]-chainmode-ivmode[:ivopts] \cite{Dmcrypt2020}. See \cite{Ferguson2010} for the CBC mode and the Serpent and Twofish ciphers, and \cite{Fruhwirth2005} for the ESSIV IV mode.
 	}
-	\label{fig:background.luks2.encryptionalgorithms}
-\end{figure}
+	\label{tbl:background.luks2.encryptionalgorithms}
+\end{table}
 
 The AES encryption algorithm is a block cipher for processing 128 bit data blocks \cite{Fips197}. This means that AES takes a key and 128 bits, or 16 bytes, of data, and generates 16 bytes of ciphertext. Using the same key, this ciphertext can be decrypted back to the original plaintext data. The key can be 128, 192, or 256 bits long. The three variants of AES, each using a different key size, are called AES-128, AES-192, and AES-256.
 
@@ -367,7 +367,7 @@ The definitive reference for all detailed information on the inner workings of W
 
 There are also some invaluable tools to directly take a look at OS internals. Most of them are from the Sysinternals\footnote{\label{fn:background.kerneldriver.sysinternals} The executables can be downloaded from \url{https://live.sysinternals.com} and are accompanied by documentation in \cite{Russinovich2016}.} Suite, others are included with Windows. See table 1-4 in \cite{Yosifovich2017} for a more detailed compilation.
 
-The Windows \emph{registry} is a database for storing system-wide and per-user configuration. It can also be used to query the current state of the system, e.g. performance counters or information on loaded device drivers \cite{Yosifovich2017}. Each data entry in the registry, called a \emph{value}, has a path, also known as its \emph{key}, and a name. This name is used to distinguish different entries stored under the same key. The keys are organized hierarchically in a tree, similar to file paths \cite{Registry2018}.
+The Windows \emph{registry} is a database for storing system-wide and per-user configuration. It can also be used to query the current state of the system, e.g. performance counters or information on loaded device drivers \cite{Yosifovich2017}. Each data entry in the registry, called a \emph{value}, has a path, also known as its \emph{key}, and a name. This name is used to distinguish different entries stored under the same key. The keys are organized hierarchically in a tree, similar to file paths \cite{Registry2018}. In the context of registry keys, \texttt{HKLM} stands for \texttt{HKEY\_LOCAL\_MACHINE}.
 
 Windows uses the physically available RAM to back its 64-bit address space of virtual memory. See \autoref{fig:background.kerneldriver.winvirtualmemory} for how the address range is used. The addresses are grouped into so-called \emph{pages}, which are typically 4KB large. Most systems have less physical RAM available than the sum of virtual memory used by all processes. The memory manager solves this problem by transferring pages currently not in use to disk. This is called \emph{paging}. When a virtual address in a page that currently resides on disk is accessed, a \emph{page fault} occurs. In that case, the needed page is loaded back into memory. This process is completely transparent to applications, aside from latency introduced by paging. However, this will become relevant when writing drivers, as driver code may be called in situations where page faults are not allowed (see \autoref{chap:background.kerneldriver.wdm} for more) \cite{Yosifovich2017}.
 
@@ -451,7 +451,7 @@ One part of the OS that runs in kernel mode is the Windows executive, which was 
 	\item \texttt{DeviceIoControl}: not sure what the book means here, this just calls the NtDeviceIoControlFile syscall? \todo{look in VM with WinDbg what exactly happens here? screenshots?}\\\todo{if screenshots mention it when explaining syscalls above, may be a nice example}
 	\item The executive also provides implementations of functions that can be used by other kernel mode components. Some of them are documented, others are not. They generally fall into one of four categories: managing Windows executive objects that represent OS resources; message passing between client and server processes on the same machine; run-time helpers for e.g. processing strings or converting datatypes; and general support routines for allocating and accessing memory as well as some synchronization mechanisms, e.g. fast mutexes.
 	\item The executive can be categorized into different components, of which the following are most relevant when developing a device driver: the I/O manager, the Plug and Play (PnP) manager, and the Power manager. The functions exported by these components generally follow a naming scheme were their names start with \texttt{Io}, \texttt{Pp}, and \texttt{Po}, respectively. Please refer to table 2-5 in \cite{Yosifovich2017} for a more exhaustive list of commonly used prefixes of function names.
-	\item Shareable resources, e.g. files, processes, and events, are represented as objects by the executive to user mode code. The state of the represented resource is captured in data fields called the object's attributes. Objects are \emph{opaque}, i.e. their attributes can only be accessed through object methods. This makes the internal implementations of objects easily changeable\footnote{\label{background.kerneldriver.oop} One can see why these representations were named objects, as they follow some of the core concepts of object-oriented programming.}. The object methods may also implement certain security and access checks. A reference to a object is called a \emph{handle}. Keeping track of these references allows the system to automatically recognize and deallocate objects that are no longer in use.
+	\item Shareable resources, e.g. files, processes, and events, are represented as objects by the executive to user mode code. The state of the represented resource is captured in data fields called the object's attributes. Objects are \emph{opaque}, i.e. their attributes can only be accessed through object methods. This makes the internal implementations of objects easily changeable\footnote{\label{fn:background.kerneldriver.oop} One can see why these representations were named objects, as they follow some of the core concepts of object-oriented programming.}. The object methods may also implement certain security and access checks. A reference to a object is called a \emph{handle}. Keeping track of these references allows the system to automatically recognize and deallocate objects that are no longer in use.
 \end{itemize}
 
 Another major kernel mode OS component is the Windows kernel, also already presented in \autoref{fig:background.kerneldriver.winarchitecture}. Its tasks include the following \cite{Yosifovich2017}:
@@ -495,9 +495,11 @@ In this model, the control over a device is not concentrated at one single drive
 	}
 	\label{fig:background.kerneldriver.devicestack}
 \end{figure}
-\footnotetext{\label{fn:background.kerneldriver.registryvolume} \texttt{HKLM\textbackslash SYSTEM\textbackslash CCS\textbackslash Control\textbackslash Class\textbackslash {71a27cdd-812a-11d0-bec7-08002be2092f}}, where \texttt{HKLM} stands for \texttt{HKEY\_LOCAL\_MACHINE} and \texttt{CCS} for \texttt{CurrentControlSet}. Later on in this section we will talk about the registry's role in driver management in more detail. \todo{ensure correct position}}
+\footnotetext{\label{fn:background.kerneldriver.registryvolume} \texttt{HKLM\textbackslash SYSTEM\textbackslash CCS\textbackslash Control\textbackslash Class\textbackslash {71a27cdd-812a-11d0-bec7-08002be2092f}}, where \texttt{CCS} stands for \texttt{CurrentControlSet}. Later on in this section we will talk about the registry's role in driver management in more detail. \todo{ensure correct position}}
 
-The device stack is built by the PnP manager during a process called \emph{device enumeration}. This happens at system boot or when resuming from hibernation, but it can also be triggered manually. During enumeration, the PnP manager constructs a so-called \emph{device tree} that captures the parent-child relationships of devices. A node in this tree represents a physical device and is appropriately called a \emph{device node}, or short \emph{devnode}. When a new device is discovered, its required drivers are loaded (if they have not already been loaded). For all those drivers, the PnP manager creates objects that are used for managing and representing the relationships between the drivers. These objects form the device stack. They are also a form of device object, however they don't represent a real, physical device, but rather a virtual one. See \autoref{fig:background.kerneldriver.devnode} for an example device node and the objects it is made of. There are the following types of objects in a device node, ordered from bottom to top by their occurrence in a devnode \cite{Yosifovich2017}:
+The device stack is built by the PnP manager during a process called \emph{device enumeration}. This happens at system boot or when resuming from hibernation, but it can also be triggered manually. During enumeration, the PnP manager constructs a so-called \emph{device tree} that captures the parent-child relationships of devices. A node in this tree represents a physical device and is appropriately called a \emph{device node}, or short \emph{devnode}. When a new device is discovered, its required drivers are loaded (if they have not already been loaded). The drivers are then informed about the new device \cite{Yosifovich2017}.
+
+For all the drivers of a device, the PnP manager creates objects that are used for managing and representing the relationships between the drivers. These objects form the device stack. They are also a form of device object, however they don't represent a real, physical device, but rather a virtual one. See \autoref{fig:background.kerneldriver.devnode} for an example device node and the objects it is made of. There are the following types of objects in a device node, ordered from bottom to top by their occurrence in a devnode \cite{Yosifovich2017}:
 \begin{itemize}
 	\item exactly one \emph{physical device object (PDO)}, created by the bus driver. It is responsible for the physical device interface.
 	\item zero or more \emph{filter device objects (FiDOs)}, created by lower filter drivers (lower being relative to the FDO).
@@ -538,9 +540,9 @@ This shows that filter drivers can be places either above the function driver (u
 	\label{fig:background.kerneldriver.devnode}
 \end{figure}
 
-As already hinted at in the description of \autoref{fig:background.kerneldriver.devicestack}, the registry is responsible for storing the information that governs driver loading. Both which drivers are loaded and the order they are loaded in are configured this way. Basically, it is described how exactly the device nodes should be built.
+As already hinted at in the description of \autoref{fig:background.kerneldriver.devicestack}, the registry is responsible for storing the information that governs driver loading. Both which drivers are loaded and the order they are loaded in are configured this way. Basically, it is described how exactly the device nodes should be built. \autoref{tbl:background.kerneldriver.registrykeys} lists the registry keys that, together with their subkeys, are relevant for the configuration.
 
-\begin{figure}[htb!]
+\begin{table}[htb!]
 	\center
 	\small
 	\def\arraystretch{1.25}
@@ -549,7 +551,7 @@ As already hinted at in the description of \autoref{fig:background.kerneldriver.
 		\rectanglecolor{gray!30}{1-1}{1-3}
 	\Body
 		\hlineB{2}
-		Registry Key & Short Name & Description \\
+		\textbf{Registry Key} & \textbf{Short Name} & \textbf{Description} \\
 		\hlineB{1.5}
 		\texttt{HKLM\textbackslash System\textbackslash CCS\textbackslash Enum}                        & Hardware key & Settings for known hardware devices \\
 		\texttt{HKLM\textbackslash System\textbackslash CCS\textbackslash Control\textbackslash Class} & Class key    & Settings for device types           \\
@@ -559,14 +561,36 @@ As already hinted at in the description of \autoref{fig:background.kerneldriver.
 	\caption[
 		Important registry keys for driver loading
 	]{
-		Important registry keys for driver loading \cite{Yosifovich2017}. Note that \texttt{HKLM} stands for \texttt{HKEY\_LOCAL\_MACHINE} and \texttt{CCS} for \texttt{CurrentControlSet}. \todo{blabla}
+		Important registry keys for driver loading \cite{Yosifovich2017}. Note that \texttt{CCS} stands for \texttt{CurrentControlSet}.
 	}
-	\label{fig:background.kerneldriver.registrykeys}
+	\label{tbl:background.kerneldriver.registrykeys}
+\end{table}
+
+The keys from \autoref{tbl:background.kerneldriver.registrykeys} each have different roles \cite{Yosifovich2017}:
+\begin{itemize}
+	\item The Hardware key configures driver loading for individual hardware devices. Its subkeys all follow the pattern of \texttt{<Enumerator>\textbackslash <Device ID>\textbackslash <Instance ID>}. The enumerator is the name of the responsible bus driver; the device ID identifies a particular type of hardware, e.g. a specific model from one manufacturer; and the instance ID distinguishes different devices with the same device ID, e.g. the device's location on the bus or its serial number. The most important values for each device are: \texttt{Service}, which contains the name of the device's function driver (this is used as a subkey in the Software key); \texttt{LowerFilters} and \texttt{UpperFilters}, which each contain an ordered list of lower and upper filter driver names, respectively; and \texttt{ClassGUID}, which identifies the device's class (this is used as a subkey in the Class key).
+	\item The Class key contains class GUIDs\footnote{\label{fn:background.kerneldriver.guids} Globally Unique Identifiers, also known as Universally Unique Identifiers (UUIDs). See \href{https://tools.ietf.org/html/rfc4122}{RFC 4122} for more information.} as subkeys. The configuration stored here is similar to the subkeys of the Hardware key, but applies to a whole class of devices. For example, the lower and upper filters listed under the GUID for the ``Volume'' class are loaded for all volumes.
+	\item The Software key contains relevant information about drivers, most importantly the \texttt{ImagePath} value, which stores the path to the driver's \texttt{.sys} file. The subkey that contains the values for a driver is the driver's name.
+\end{itemize}
+
+Examples of subkeys of each of these keys are shown in \autoref{fig:background.kerneldriver.registry}.
+
+\begin{figure}[htb!]
+	\center
+	\todo{Insert screenshots here, use these keys:}
+	\verb|HKLM\SYSTEM\CurrentControlSet\Control\Class\{71a27cdd-812a-11d0-bec7-08002be2092f}|
+	\verb|HKLM\SYSTEM\CurrentControlSet\Enum\STORAGE\Volume\<insert instance id here>|
+	\verb|HKLM\SYSTEM\CurrentControlSet\Services\fvevol|
+	\caption[
+		Example contents of a Hardware, Class, and Software subkey
+	]{
+		Example contents of a Hardware, Class, and Software subkey (Screenshots from the Windows Registry Editor). \todo{bla}
+	}
+	\label{fig:background.kerneldriver.registry}
 \end{figure}
 
 \todo{TODOs for this or later sections:}
 \begin{itemize}
-	\item explain how drivers are loaded (configuration via registry), order of loading etc.
 	\item IRPs and other IO stuff, Figure 6-34
 	\item the different contexts driver code can run in (page 82)
 	\item non-pageable paths and locking user memory, MDLs? DPCs, ALPCs (they're not relevant for our driver, I think)?
