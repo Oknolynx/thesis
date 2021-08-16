@@ -14,7 +14,7 @@ The reference implementation\footnote{\label{fn:background.luks2.referenceimpl} 
 	\item converting a LUKS partition to a LUKS2 partition,
 	\item actually mounting a LUKS2 partition for read/write usage (this is what our kernel driver and its userspace configuration tool is for).
 \end{itemize}
-Our library does provide access to the raw decrypted user data, but the practical use of this is very limited: the decrypted data is in the format of a filesystem, e.g. FAT32, btrfs, or Ext4. Therefore a filesystem driver is needed to actually access the stored files. One way of exposing the decrypted data to the system's filesystem drivers is by transparently decrypting the data directly in the kernel, which is what our driver does (see \autoref{chap:ourapproach}).
+Our library does provide access to the raw decrypted user data, but the practical use of this is very limited: the decrypted data is in the format of a filesystem, e.g. FAT32, btrfs, or Ext4. Therefore, a filesystem driver is needed to actually access the stored files. One way of exposing the decrypted data to the system's filesystem drivers is by transparently decrypting the data directly in the kernel, which is what our driver does (see \autoref{chap:ourapproach}).
 
 \subsubsection{On-Disk Format}
 \label{chap:background.luks2.ondisk}
@@ -33,8 +33,7 @@ Our library does provide access to the raw decrypted user data, but the practica
 		\node [anchor=center] at (10.25, 1.5) {\footnotesize\makecell{alignment\\padding}};
 		\draw [fill={rgb:black, 1; white, 2}] (10, 0) rectangle (10.5, 1);
 
-		\draw [decorate, decoration={brace, amplitude=10pt, mirror}, yshift=-3pt]
-		(0, 0) -- (10.5, 0) node [black, midway, yshift=-18pt] {\small Complete header};
+		\draw[decorate, decoration={brace, amplitude=10pt, mirror}, yshift=-3pt] (0, 0) -- (10.5, 0) node[midway, yshift=-18pt] {\small Complete header};
 
 		\draw [fill=white] (10.5, 0) rectangle (15, 1);
 		\node [anchor=center] at (12.75, 0.5) {\small\makecell{Segment(s)}};
@@ -89,40 +88,74 @@ struct luks2_hdr_disk {
 \begin{figure}[htb!]
 	\ttfamily
 	\scriptsize
-	\begin{tabular}{c|*{16}{c}|l}
-		0000 & \cellcolor{tPink}4C & \cellcolor{tPink}55 & \cellcolor{tPink}4B & \cellcolor{tPink}53 & \cellcolor{tPink}BA & \cellcolor{tPink}BE & \cellcolor{tOrng}00 & \cellcolor{tOrng}02 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}40 & \cellcolor{tYlow}00 & \coltxt{tPink}{LUKSº¾}\coltxt{tOrng}{..}\coltxt{tYlow}{......@.} \\
-		0010 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}03 & \cellcolor{tLblu}54 & \cellcolor{tLblu}68 & \cellcolor{tLblu}69 & \cellcolor{tLblu}73 & \cellcolor{tLblu}20 & \cellcolor{tLblu}69 & \cellcolor{tLblu}73 & \cellcolor{tLblu}20 & \coltxt{tGren}{........}\coltxt{tLblu}{This is } \\
-		0020 & \cellcolor{tLblu}61 & \cellcolor{tLblu}6E & \cellcolor{tLblu}20 & \cellcolor{tLblu}41 & \cellcolor{tLblu}53 & \cellcolor{tLblu}43 & \cellcolor{tLblu}49 & \cellcolor{tLblu}49 & \cellcolor{tLblu}20 & \cellcolor{tLblu}6C & \cellcolor{tLblu}61 & \cellcolor{tLblu}62 & \cellcolor{tLblu}65 & \cellcolor{tLblu}6C & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \coltxt{tLblu}{an ASCII label..} \\
-		0030 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \coltxt{tLblu}{................} \\
-		0040 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tBlue}73 & \cellcolor{tBlue}68 & \cellcolor{tBlue}61 & \cellcolor{tBlue}32 & \cellcolor{tBlue}35 & \cellcolor{tBlue}36 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \coltxt{tLblu}{........}\coltxt{tBlue}{sha256..} \\
-		0050 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \coltxt{tBlue}{................} \\
-		0060 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tPurp}EB & \cellcolor{tPurp}0F & \cellcolor{tPurp}D2 & \cellcolor{tPurp}C6 & \cellcolor{tPurp}E3 & \cellcolor{tPurp}D2 & \cellcolor{tPurp}8D & \cellcolor{tPurp}4B & \coltxt{tBlue}{........}\coltxt{tPurp}{ë.ÒÆãÒ.K} \\
-		0070 & \cellcolor{tPurp}BB & \cellcolor{tPurp}2B & \cellcolor{tPurp}8A & \cellcolor{tPurp}49 & \cellcolor{tPurp}E6 & \cellcolor{tPurp}2E & \cellcolor{tPurp}4E & \cellcolor{tPurp}B7 & \cellcolor{tPurp}04 & \cellcolor{tPurp}2F & \cellcolor{tPurp}A9 & \cellcolor{tPurp}39 & \cellcolor{tPurp}76 & \cellcolor{tPurp}71 & \cellcolor{tPurp}8F & \cellcolor{tPurp}8A & \coltxt{tPurp}{»+ŠIæ.N·./©9vq.Š} \\
-		0080 & \cellcolor{tPurp}33 & \cellcolor{tPurp}E8 & \cellcolor{tPurp}F3 & \cellcolor{tPurp}90 & \cellcolor{tPurp}FF & \cellcolor{tPurp}DC & \cellcolor{tPurp}4D & \cellcolor{tPurp}3D & \cellcolor{tPurp}E8 & \cellcolor{tPurp}30 & \cellcolor{tPurp}7B & \cellcolor{tPurp}37 & \cellcolor{tPurp}01 & \cellcolor{tPurp}30 & \cellcolor{tPurp}E7 & \cellcolor{tPurp}5D & \coltxt{tPurp}{3èó.ÿÜM=è0\{7.0ç]} \\
-		0090 & \cellcolor{tPurp}AD & \cellcolor{tPurp}A0 & \cellcolor{tPurp}57 & \cellcolor{tPurp}1C & \cellcolor{tPurp}0E & \cellcolor{tPurp}63 & \cellcolor{tPurp}BC & \cellcolor{tPurp}D4 & \cellcolor{tPurp}DD & \cellcolor{tPurp}3C & \cellcolor{tPurp}EC & \cellcolor{tPurp}F5 & \cellcolor{tPurp}DE & \cellcolor{tPurp}67 & \cellcolor{tPurp}F8 & \cellcolor{tPurp}D8 & \coltxt{tPurp}{..W..c¼ÔÝ<ìõÞgøØ} \\
-		00A0 & \cellcolor{tPurp}F2 & \cellcolor{tPurp}7E & \cellcolor{tPurp}82 & \cellcolor{tPurp}CD & \cellcolor{tPurp}B9 & \cellcolor{tPurp}DD & \cellcolor{tPurp}77 & \cellcolor{tPurp}10 & \cellcolor{tRose}65 & \cellcolor{tRose}39 & \cellcolor{tRose}33 & \cellcolor{tRose}64 & \cellcolor{tRose}63 & \cellcolor{tRose}61 & \cellcolor{tRose}66 & \cellcolor{tRose}61 & \coltxt{tPurp}{ò\nicetilde{}‚Í¹Ýw.}\coltxt{tRose}{e93dcafa} \\
-		00B0 & \cellcolor{tRose}2D & \cellcolor{tRose}65 & \cellcolor{tRose}65 & \cellcolor{tRose}30 & \cellcolor{tRose}62 & \cellcolor{tRose}2D & \cellcolor{tRose}34 & \cellcolor{tRose}31 & \cellcolor{tRose}36 & \cellcolor{tRose}38 & \cellcolor{tRose}2D & \cellcolor{tRose}61 & \cellcolor{tRose}61 & \cellcolor{tRose}37 & \cellcolor{tRose}63 & \cellcolor{tRose}2D & \coltxt{tRose}{-ee0b-4168-aa7c-} \\
-		00C0 & \cellcolor{tRose}66 & \cellcolor{tRose}33 & \cellcolor{tRose}30 & \cellcolor{tRose}34 & \cellcolor{tRose}37 & \cellcolor{tRose}34 & \cellcolor{tRose}38 & \cellcolor{tRose}38 & \cellcolor{tRose}36 & \cellcolor{tRose}61 & \cellcolor{tRose}32 & \cellcolor{tRose}65 & \cellcolor{tRose}00 & \cellcolor{tRose}00 & \cellcolor{tRose}00 & \cellcolor{tRose}00 & \coltxt{tRose}{f30474886a2e....} \\
-		00D0 & \cellcolor{tPink}54 & \cellcolor{tPink}68 & \cellcolor{tPink}69 & \cellcolor{tPink}73 & \cellcolor{tPink}20 & \cellcolor{tPink}69 & \cellcolor{tPink}73 & \cellcolor{tPink}20 & \cellcolor{tPink}61 & \cellcolor{tPink}6E & \cellcolor{tPink}20 & \cellcolor{tPink}6F & \cellcolor{tPink}70 & \cellcolor{tPink}74 & \cellcolor{tPink}69 & \cellcolor{tPink}6F & \coltxt{tPink}{This is an optio} \\
-		00E0 & \cellcolor{tPink}6E & \cellcolor{tPink}61 & \cellcolor{tPink}6C & \cellcolor{tPink}20 & \cellcolor{tPink}73 & \cellcolor{tPink}65 & \cellcolor{tPink}63 & \cellcolor{tPink}6F & \cellcolor{tPink}6E & \cellcolor{tPink}64 & \cellcolor{tPink}61 & \cellcolor{tPink}72 & \cellcolor{tPink}79 & \cellcolor{tPink}20 & \cellcolor{tPink}6C & \cellcolor{tPink}61 & \coltxt{tPink}{nal secondary la} \\
-		00F0 & \cellcolor{tPink}62 & \cellcolor{tPink}65 & \cellcolor{tPink}6C & \cellcolor{tPink}00 & \cellcolor{tPink}00 & \cellcolor{tPink}00 & \cellcolor{tPink}00 & \cellcolor{tPink}00 & \cellcolor{tPink}00 & \cellcolor{tPink}00 & \cellcolor{tPink}00 & \cellcolor{tPink}00 & \cellcolor{tPink}00 & \cellcolor{tPink}00 & \cellcolor{tPink}00 & \cellcolor{tPink}00 & \coltxt{tPink}{bel.............} \\
-		0100 & \cellcolor{tOrng}00 & \cellcolor{tOrng}00 & \cellcolor{tOrng}00 & \cellcolor{tOrng}00 & \cellcolor{tOrng}00 & \cellcolor{tOrng}00 & \cellcolor{tOrng}00 & \cellcolor{tOrng}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \coltxt{tOrng}{........}\coltxt{tYlow}{........} \\
-		0110 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \coltxt{tYlow}{................} \\
-		0120 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \coltxt{tYlow}{................} \\
-		0130 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \coltxt{tYlow}{................} \\
-		0140 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \coltxt{tYlow}{................} \\
-		0150 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \coltxt{tYlow}{................} \\
-		0160 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \coltxt{tYlow}{................} \\
-		0170 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \coltxt{tYlow}{................} \\
-		0180 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \coltxt{tYlow}{................} \\
-		0190 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \coltxt{tYlow}{................} \\
-		01A0 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \coltxt{tYlow}{................} \\
-		01B0 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \coltxt{tYlow}{................} \\
-		01C0 & \cellcolor{tGren}91 & \cellcolor{tGren}A4 & \cellcolor{tGren}A9 & \cellcolor{tGren}83 & \cellcolor{tGren}03 & \cellcolor{tGren}FF & \cellcolor{tGren}FB & \cellcolor{tGren}68 & \cellcolor{tGren}4E & \cellcolor{tGren}C2 & \cellcolor{tGren}94 & \cellcolor{tGren}6F & \cellcolor{tGren}4C & \cellcolor{tGren}78 & \cellcolor{tGren}71 & \cellcolor{tGren}AF & \coltxt{tGren}{‘¤©ƒ.ÿûhNÂ”oLxq¯} \\
-		01D0 & \cellcolor{tGren}AE & \cellcolor{tGren}1A & \cellcolor{tGren}91 & \cellcolor{tGren}F8 & \cellcolor{tGren}E0 & \cellcolor{tGren}2C & \cellcolor{tGren}F3 & \cellcolor{tGren}71 & \cellcolor{tGren}D5 & \cellcolor{tGren}17 & \cellcolor{tGren}CB & \cellcolor{tGren}60 & \cellcolor{tGren}E5 & \cellcolor{tGren}2F & \cellcolor{tGren}D6 & \cellcolor{tGren}36 & \coltxt{tGren}{®.‘øà,óqÕ.Ë`å/Ö6} \\
-		01E0 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \coltxt{tGren}{................} \\
-		01F0 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \coltxt{tGren}{................}
-	\end{tabular}
+	\begin{NiceTabular}{c|*{16}{c}|l}
+	\CodeBefore
+		\rectanglecolor{tPink}{1-2}{1-7}    \rectanglecolor{tOrng}{1-8}{1-9}     \rectanglecolor{tYlow}{1-10}{1-17}
+		\rectanglecolor{tGren}{2-2}{2-9}    \rectanglecolor{tLblu}{2-10}{2-17}
+		\rectanglecolor{tLblu}{3-2}{3-17}
+		\rectanglecolor{tLblu}{4-2}{4-17}
+		\rectanglecolor{tLblu}{5-2}{5-9}    \rectanglecolor{tBlue}{5-10}{5-17}
+		\rectanglecolor{tBlue}{6-2}{6-17}
+		\rectanglecolor{tBlue}{7-2}{7-9}    \rectanglecolor{tPurp}{7-10}{7-17}
+		\rectanglecolor{tPurp}{8-2}{8-17}
+		\rectanglecolor{tPurp}{9-2}{9-17}
+		\rectanglecolor{tPurp}{10-2}{10-17}
+		\rectanglecolor{tPurp}{11-2}{11-9}  \rectanglecolor{tRose}{11-10}{11-17}
+		\rectanglecolor{tRose}{12-2}{12-17}
+		\rectanglecolor{tRose}{13-2}{13-17}
+		\rectanglecolor{tPink}{14-2}{14-17}
+		\rectanglecolor{tPink}{15-2}{15-17}
+		\rectanglecolor{tPink}{16-2}{16-17}
+		\rectanglecolor{tOrng}{17-2}{17-9}  \rectanglecolor{tYlow}{17-10}{17-17}
+		\rectanglecolor{tYlow}{18-2}{18-17}
+		\rectanglecolor{tYlow}{19-2}{19-17}
+		\rectanglecolor{tYlow}{20-2}{20-17}
+		\rectanglecolor{tYlow}{21-2}{21-17}
+		\rectanglecolor{tYlow}{22-2}{22-17}
+		\rectanglecolor{tYlow}{23-2}{23-17}
+		\rectanglecolor{tYlow}{24-2}{24-17}
+		\rectanglecolor{tYlow}{25-2}{25-17}
+		\rectanglecolor{tYlow}{26-2}{26-17}
+		\rectanglecolor{tYlow}{27-2}{27-17}
+		\rectanglecolor{tYlow}{28-2}{28-17}
+		\rectanglecolor{tGren}{29-2}{29-17}
+		\rectanglecolor{tGren}{30-2}{30-17}
+		\rectanglecolor{tGren}{31-2}{31-17}
+		\rectanglecolor{tGren}{32-2}{32-17}
+	\Body
+	    0000 & 4C & 55 & 4B & 53 & BA & BE & 00 & 02 & 00 & 00 & 00 & 00 & 00 & 00 & 40 & 00 & \coltxt{tPink}{LUKSº¾}\coltxt{tOrng}{..}\coltxt{tYlow}{......@.} \\
+        0010 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 03 & 54 & 68 & 69 & 73 & 20 & 69 & 73 & 20 & \coltxt{tGren}{........}\coltxt{tLblu}{This is } \\
+        0020 & 61 & 6E & 20 & 41 & 53 & 43 & 49 & 49 & 20 & 6C & 61 & 62 & 65 & 6C & 00 & 00 & \coltxt{tLblu}{an ASCII label..} \\
+        0030 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tLblu}{................} \\
+        0040 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 73 & 68 & 61 & 32 & 35 & 36 & 00 & 00 & \coltxt{tLblu}{........}\coltxt{tBlue}{sha256..} \\
+        0050 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tBlue}{................} \\
+        0060 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & EB & 0F & D2 & C6 & E3 & D2 & 8D & 4B & \coltxt{tBlue}{........}\coltxt{tPurp}{ë.ÒÆãÒ.K} \\
+        0070 & BB & 2B & 8A & 49 & E6 & 2E & 4E & B7 & 04 & 2F & A9 & 39 & 76 & 71 & 8F & 8A & \coltxt{tPurp}{»+ŠIæ.N·./©9vq.Š} \\
+        0080 & 33 & E8 & F3 & 90 & FF & DC & 4D & 3D & E8 & 30 & 7B & 37 & 01 & 30 & E7 & 5D & \coltxt{tPurp}{3èó.ÿÜM=è0\{7.0ç]} \\
+        0090 & AD & A0 & 57 & 1C & 0E & 63 & BC & D4 & DD & 3C & EC & F5 & DE & 67 & F8 & D8 & \coltxt{tPurp}{..W..c¼ÔÝ<ìõÞgøØ} \\
+        00A0 & F2 & 7E & 82 & CD & B9 & DD & 77 & 10 & 65 & 39 & 33 & 64 & 63 & 61 & 66 & 61 & \coltxt{tPurp}{ò\nicetilde{}‚Í¹Ýw.}\coltxt{tRose}{e93dcafa} \\
+        00B0 & 2D & 65 & 65 & 30 & 62 & 2D & 34 & 31 & 36 & 38 & 2D & 61 & 61 & 37 & 63 & 2D & \coltxt{tRose}{-ee0b-4168-aa7c-} \\
+        00C0 & 66 & 33 & 30 & 34 & 37 & 34 & 38 & 38 & 36 & 61 & 32 & 65 & 00 & 00 & 00 & 00 & \coltxt{tRose}{f30474886a2e....} \\
+        00D0 & 54 & 68 & 69 & 73 & 20 & 69 & 73 & 20 & 61 & 6E & 20 & 6F & 70 & 74 & 69 & 6F & \coltxt{tPink}{This is an optio} \\
+        00E0 & 6E & 61 & 6C & 20 & 73 & 65 & 63 & 6F & 6E & 64 & 61 & 72 & 79 & 20 & 6C & 61 & \coltxt{tPink}{nal secondary la} \\
+        00F0 & 62 & 65 & 6C & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tPink}{bel.............} \\
+        0100 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tOrng}{........}\coltxt{tYlow}{........} \\
+        0110 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tYlow}{................} \\
+        0120 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tYlow}{................} \\
+        0130 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tYlow}{................} \\
+        0140 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tYlow}{................} \\
+        0150 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tYlow}{................} \\
+        0160 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tYlow}{................} \\
+        0170 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tYlow}{................} \\
+        0180 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tYlow}{................} \\
+        0190 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tYlow}{................} \\
+        01A0 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tYlow}{................} \\
+        01B0 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tYlow}{................} \\
+        01C0 & 91 & A4 & A9 & 83 & 03 & FF & FB & 68 & 4E & C2 & 94 & 6F & 4C & 78 & 71 & AF & \coltxt{tGren}{‘¤©ƒ.ÿûhNÂ”oLxq¯} \\
+        01D0 & AE & 1A & 91 & F8 & E0 & 2C & F3 & 71 & D5 & 17 & CB & 60 & E5 & 2F & D6 & 36 & \coltxt{tGren}{®.‘øà,óqÕ.Ë`å/Ö6} \\
+        01E0 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tGren}{................} \\
+        01F0 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tGren}{................}
+	\end{NiceTabular}
 	\caption[
 		LUKS2 binary header example
 	]{
@@ -283,18 +316,25 @@ The keyslots area on the disk is large enough to store multiple split and encryp
 
 \subsubsection{Using an Unlocked Partition}
 \label{chap:background.luks2.using}
-After a partition has been unlocked, i.e. after the master key of one of its segments has been decrypted, the partition is ready to be read from and written to. This happens using what \autoref{fig:background.luks2.tks2} calls a real time cipher. LUKS2 supports different encryption algorithms for this purpose, see \autoref{fig:background.luks2.encryptionalgorithms} for a selection of them. Our driver only supports the default aes-xts-plain64 encryption. Therefore we will focus on that in this section.
+After a partition has been unlocked, i.e. after the master key of one of its segments has been decrypted, the partition is ready to be read from and written to. This happens using what \autoref{fig:background.luks2.tks2} calls a real time cipher. LUKS2 supports different encryption algorithms for this purpose, see \autoref{fig:background.luks2.encryptionalgorithms} for a selection of them. Our driver only supports the default aes-xts-plain64 encryption. Therefore, we will focus on that in this section.
 
 \begin{figure}[htb!]
 	\center
-	\begin{tabular}{cc}
-		\makecell{\textbf{Algorithm}\\in \texttt{dm-crypt} notation} & \textbf{Description} \\
-		\hline
-		aes-xts-plain64 & AES in XTS mode with sequential IV \\
-		aes-cbc-essiv:sha256 & AES in CBC mode with ESSIV IV \\
-		serpent-xts-plain64 & Serpent cipher with sequential IV \\
-		twofish-xts-plain64 & Twofish cipher with sequential IV
-	\end{tabular}
+	\def\arraystretch{1.25}
+	\begin{NiceTabular}{cc}
+	\CodeBefore
+		\rectanglecolor{gray!30}{1-1}{2-2}
+	\Body
+		\hlineB{2}
+		\textbf{Algorithm}            & \textbf{Description} \\
+		in \texttt{dm-crypt} notation &                      \\
+		\hlineB{1.5}
+		aes-xts-plain64      & \makecell{AES in XTS mode with sequential IV} \\
+		aes-cbc-essiv:sha256 & \makecell{AES in CBC mode with ESSIV IV}      \\
+		serpent-xts-plain64  & \makecell{Serpent cipher with sequential IV}  \\
+		twofish-xts-plain64  & \makecell{Twofish cipher with sequential IV}  \\
+		\hlineB{2}
+	\end{NiceTabular}
 	\caption[
 		Selection of LUKS2 encryption algorithms
 	]{
@@ -335,7 +375,7 @@ Windows uses the physically available RAM to back its 64-bit address space of vi
 	\center
 	\begin{tikzpicture}
 		\node[rect, fill=tPink,     from={4.25, 3   to 7.25, 5}]   {\small\makecell{128 TB\\System Space}};
-		\node[rect, fill={gray!40}, from={4.25, 2.1 to 7.25, 2.9}] {\small Unmapped};
+		\node[rect, fill={gray!30}, from={4.25, 2.1 to 7.25, 2.9}] {\small Unmapped};
 		\node[rect, fill=tOrng,     from={4.25, 0   to 7.25, 2}]   {\small\makecell{128 TB\\User Process\\Space}};
 
 		\node[anchor=west] at (0.25, 0)    {\footnotesize\texttt{0x00000000'00000000}};
@@ -417,7 +457,7 @@ One part of the OS that runs in kernel mode is the Windows executive, which was 
 Another major kernel mode OS component is the Windows kernel, also already presented in \autoref{fig:background.kerneldriver.winarchitecture}. Its tasks include the following \cite{Yosifovich2017}:
 \begin{itemize}
 	\item It takes over the task of thread scheduling and (multi-processor) synchronization and also dispatches interrupts and exceptions. Aside from that, it avoids making policy decisions, and leaves this to the executive.
-	\item In general, the one of the kernel's jobs is to conceal some of the differences of the different hardware architectures that Windows supports. It is assisted in this task by the HAL.
+	\item In general, one of the kernel's jobs is to conceal some of the differences of the different hardware architectures that Windows supports. It is assisted in this task by the HAL.
 	\item Intended for usage by other, higher-level components, including the executive, it provides low-level routines and basic data structures. These are partly documented and may be used in device drivers. The function names all start with the \texttt{Ke} prefix.
 	\item The exposed data structures are called \emph{kernel objects}. These are simpler than the executive's objects and therefore have no overhead for e.g. manipulation via handles or security checks. They are the building blocks for most executive-level objects.
 \end{itemize}
@@ -451,12 +491,78 @@ In this model, the control over a device is not concentrated at one single drive
 	\caption[
 		Example of a device stack for a storage volume
 	]{
-		Example of a device stack for a storage volume\footnotemark (Screenshot). \todo{Re-take screenshot on a 4K display} The official descriptions of the drivers listed in this example are, from top to bottom: ``Volume Shadow Copy driver'', ``Volume driver'', ``I/O rate control filter'', ``BitLocker Drive Encryption Driver'', and ``Volume Manager Driver''. As can be seen under the appropriate registry key\footnotemark, \texttt{fvevol} and \texttt{iorate} are lower filter drivers and \texttt{volsnap} is an upper filter driver. This leaves \texttt{volume} as the function driver and \texttt{volmgr} as the bus driver.
+		Example of a device stack for a storage volume (Screenshot from device properties in Windows Device Manager). \todo{Re-take screenshot on a 4K display} The official descriptions of the drivers listed in this example are, from top to bottom: ``Volume Shadow Copy driver'', ``Volume driver'', ``I/O rate control filter'', ``BitLocker Drive Encryption Driver'', and ``Volume Manager Driver''. As can be seen under the appropriate registry key\footnotemark, \texttt{fvevol} and \texttt{iorate} are lower filter drivers and \texttt{volsnap} is an upper filter driver. This leaves \texttt{volume} as the function driver and \texttt{volmgr} as the bus driver.
 	}
 	\label{fig:background.kerneldriver.devicestack}
 \end{figure}
-\footnotetext{\label{fn:background.kerneldriver.devicestack} This can be viewed for any device in the Windows Device Manager as follows: open the device's properties, navigate to the ``Details'' tab and select the ``Device stack'' property. You may need to check the ``Show hidden devices'' option in the Device Manager's ``View'' menu to see the desired device. \todo{ensure correct position}}
-\footnotetext{\label{fn:background.kerneldriver.registryvolume} \texttt{HKLM\textbackslash SYSTEM\textbackslash CurrentControlSet\textbackslash Control\textbackslash Class\textbackslash {71a27cdd-812a-11d0-bec7-08002be2092f}}, where \texttt{HKLM} stands for \texttt{HKEY\_LOCAL\_MACHINE}. Later on in this section \todo{change if new subsubsection} we will talk about the registry's role in driver management in more detail. \todo{ensure correct position}}
+\footnotetext{\label{fn:background.kerneldriver.registryvolume} \texttt{HKLM\textbackslash SYSTEM\textbackslash CCS\textbackslash Control\textbackslash Class\textbackslash {71a27cdd-812a-11d0-bec7-08002be2092f}}, where \texttt{HKLM} stands for \texttt{HKEY\_LOCAL\_MACHINE} and \texttt{CCS} for \texttt{CurrentControlSet}. Later on in this section we will talk about the registry's role in driver management in more detail. \todo{ensure correct position}}
+
+The device stack is built by the PnP manager during a process called \emph{device enumeration}. This happens at system boot or when resuming from hibernation, but it can also be triggered manually. During enumeration, the PnP manager constructs a so-called \emph{device tree} that captures the parent-child relationships of devices. A node in this tree represents a physical device and is appropriately called a \emph{device node}, or short \emph{devnode}. When a new device is discovered, its required drivers are loaded (if they have not already been loaded). For all those drivers, the PnP manager creates objects that are used for managing and representing the relationships between the drivers. These objects form the device stack. They are also a form of device object, however they don't represent a real, physical device, but rather a virtual one. See \autoref{fig:background.kerneldriver.devnode} for an example device node and the objects it is made of. There are the following types of objects in a device node, ordered from bottom to top by their occurrence in a devnode \cite{Yosifovich2017}:
+\begin{itemize}
+	\item exactly one \emph{physical device object (PDO)}, created by the bus driver. It is responsible for the physical device interface.
+	\item zero or more \emph{filter device objects (FiDOs)}, created by lower filter drivers (lower being relative to the FDO).
+	\item exactly one \emph{functional device object (FDO)}, created by the device's function driver. It is responsible for the logical device interface.
+	\item zero or more FiDOs, created by upper filter drivers.
+\end{itemize}
+
+This shows that filter drivers can be places either above the function driver (upper filter drivers) or between the function driver and the bus driver (lower filter drivers). These serve different purposes: ``In most cases, lower-level filter drivers modify the behavior of device hardware. For example, if a device reports to its bus driver that it requires 4 I/O ports when it actually requires 16 I/O ports, a lower-level, device-specific function filter driver could intercept the list of hardware resources reported by the bus driver to the PnP manager and update the count of I/O ports. Upper-level filter drivers usually provide added-value features for a device. For example, an upper-level device filter driver for a disk can enforce additional security checks.'' \cite{Yosifovich2017}
+
+\begin{figure}[htb!]
+	\center
+	\begin{tikzpicture}
+		\node[rect, fill=tYlow, from={0.2, 0.3 to 3.8, 7.1}] {\small Device node};
+		\node[rect, fill=tLblu, text width=5em] at (2, 6.4)  {\small FiDO};
+		\node[rect, fill=tLblu, text width=5em] at (2, 5.5)  {\small FiDO};
+		\node[rect, fill=tLblu, text width=5em] at (2, 4.6)  {\small FiDO};
+		\node[rect, fill=tGren, text width=5em] at (2, 2.8)  {\small FiDO};
+		\node[rect, fill=tGren, text width=5em] at (2, 1.9)  {\small FiDO};
+		\node[rect, fill=tBlue, text width=7em, rounded corners=9pt] at (2, 3.7) {\small FDO};
+		\node[rect, fill=tPink, text width=7em, rounded corners=9pt] at (2, 1)   {\small PDO};
+
+		% \node[anchor=north] at (2, 0.1) {Device node};
+		\draw[decorate, decoration={brace, amplitude=10pt, mirror}] (0.2, 0.1) -- (3.8, 0.1) node[midway, yshift=-18pt] {\small Device node};
+
+		\node[anchor=west] at (4, 6.4) {Upper Filter Driver 3};
+		\node[anchor=west] at (4, 5.5) {Upper Filter Driver 2};
+		\node[anchor=west] at (4, 4.6) {Upper Filter Driver 3};
+		\node[anchor=west] at (4, 3.7) {Function driver};
+		\node[anchor=west] at (4, 2.8) {Lower Filter Driver 2};
+		\node[anchor=west] at (4, 1.9) {Lower Filter Driver 1};
+		\node[anchor=west] at (4, 1)   {Bus driver};
+	\end{tikzpicture}
+	\caption[
+		A device node and its device stack
+	]{
+		A device node and its device stack (modified after \cite{Yosifovich2017}). See \autoref{fig:background.kerneldriver.devicestack} for a concrete example of a device stack.
+	}
+	\label{fig:background.kerneldriver.devnode}
+\end{figure}
+
+As already hinted at in the description of \autoref{fig:background.kerneldriver.devicestack}, the registry is responsible for storing the information that governs driver loading. Both which drivers are loaded and the order they are loaded in are configured this way. Basically, it is described how exactly the device nodes should be built.
+
+\begin{figure}[htb!]
+	\center
+	\small
+	\def\arraystretch{1.25}
+	\begin{NiceTabular}{lll}
+	\CodeBefore
+		\rectanglecolor{gray!30}{1-1}{1-3}
+	\Body
+		\hlineB{2}
+		Registry Key & Short Name & Description \\
+		\hlineB{1.5}
+		\texttt{HKLM\textbackslash System\textbackslash CCS\textbackslash Enum}                        & Hardware key & Settings for known hardware devices \\
+		\texttt{HKLM\textbackslash System\textbackslash CCS\textbackslash Control\textbackslash Class} & Class key    & Settings for device types           \\
+		\texttt{HKLM\textbackslash System\textbackslash CCS\textbackslash Services}                    & Software key & Settings for drivers                \\
+		\hlineB{2}
+	\end{NiceTabular}
+	\caption[
+		Important registry keys for driver loading
+	]{
+		Important registry keys for driver loading \cite{Yosifovich2017}. Note that \texttt{HKLM} stands for \texttt{HKEY\_LOCAL\_MACHINE} and \texttt{CCS} for \texttt{CurrentControlSet}. \todo{blabla}
+	}
+	\label{fig:background.kerneldriver.registrykeys}
+\end{figure}
 
 \todo{TODOs for this or later sections:}
 \begin{itemize}
@@ -465,9 +571,6 @@ In this model, the control over a device is not concentrated at one single drive
 	\item the different contexts driver code can run in (page 82)
 	\item non-pageable paths and locking user memory, MDLs? DPCs, ALPCs (they're not relevant for our driver, I think)?
 \end{itemize}
-
-\todo{mention after explaining device stacks:} Filter drivers can be ``placed above or below a function driver and above a bus driver.''
-``In most cases, lower-level filter drivers modify the behavior of device hardware. For example, if a device reports to its bus driver that it requires 4 I/O ports when it actually requires 16 I/O ports, a lower-level, device-specific function filter driver could intercept the list of hardware resources reported by the bus driver to the PnP manager and update the count of I/O ports. Upper-level filter drivers usually provide added-value features for a device. For example, an upper-level device filter driver for a disk can enforce additional security checks.''
 
 There also exist other models and frameworks for Windows driver development: the Windows Driver Foundation (WDF) tries to simplify things and provides the Kernel-Mode Driver Framework (KMDF) and the User-Mode Driver Framework (UMDF) \cite{Yosifovich2017}. We will explore some of the differences between them and WDM in \autoref{chap:ourapproach.failed}.
 
