@@ -7,14 +7,14 @@
 
 The differences between the original LUKS and LUKS2 are minor. According to \cite{Broz2018}, LUKS2 adds ``more flexible ways of storing metadata, redundant information to provide recovery in the case of corruption in a metadata area, and an interface to store externally managed metadata for integration with other tools.'' Practically, this means that LUKS2 has a different on-disk layout and, among other things, supports more password hashing algorithms (more precisely, password-based key derivation functions).
 
-The reference implementation\footnote{\label{fn:background.luks2.referenceimpl} \url{https://gitlab.com/cryptsetup/cryptsetup}} is designed only for usage on Linux, which is why we developed a new Rust library for interacting with LUKS2 partitions. This is not a full equivalent, but only a cross-platform helper. Its task is to take care of all the cryptographic work needed before actually decrypting and encrypting data. Notably, it lacks the following features of the reference implementation:
+The reference implementation\footnote{\label{fn:background.luks2.referenceimpl} \url{https://gitlab.com/cryptsetup/cryptsetup}} is designed only for usage on Linux, which is why we developed a new library in Rust for interacting with LUKS2 partitions. This is not a full equivalent, but only a cross-platform helper. Its task is to take care of all the cryptographic work needed before actually decrypting and encrypting data (more precisely, the process described in \autoref{chap:background.luks2.unlocking}). Notably, it lacks the following features of the reference implementation:
 \begin{itemize}[label=\textbf{--}]
 	\item formatting new LUKS2 partitions,
 	\item modifying or repairing existing LUKS2 partitions,
 	\item converting a LUKS partition to a LUKS2 partition,
 	\item actually mounting a LUKS2 partition for read/write usage (this is what our kernel driver and its userspace configuration tool is for).
 \end{itemize}
-Our library does provide access to the raw decrypted user data, but the practical use of this is very limited: the decrypted data is in the format of a filesystem, e.g. FAT32, btrfs, or Ext4. Therefore a filesystem driver is needed to actually access the stored files. One way of exposing the decrypted data to the system's filesystem drivers is by transparently decrypting the data directly in the kernel, which is what our driver does (see \autoref{chap:ourapproach}).
+Our library does provide access to the raw decrypted user data, but the practical use of this is very limited: the decrypted data is in the format of a filesystem, e.g. FAT32, btrfs, or Ext4. Therefore, a filesystem driver is needed to actually access the stored files. One way of exposing the decrypted data to the system's filesystem drivers is by transparently decrypting the data directly in the kernel, which is what our driver does (see \autoref{chap:ourapproach}).
 
 \subsubsection{On-Disk Format}
 \label{chap:background.luks2.ondisk}
@@ -33,8 +33,7 @@ Our library does provide access to the raw decrypted user data, but the practica
 		\node [anchor=center] at (10.25, 1.5) {\footnotesize\makecell{alignment\\padding}};
 		\draw [fill={rgb:black, 1; white, 2}] (10, 0) rectangle (10.5, 1);
 
-		\draw [decorate, decoration={brace, amplitude=10pt, mirror}, yshift=-3pt]
-		(0, 0) -- (10.5, 0) node [black, midway, yshift=-18pt] {\small Complete header};
+		\draw[decorate, decoration={brace, amplitude=10pt, mirror}, yshift=-3pt] (0, 0) -- (10.5, 0) node[midway, yshift=-18pt] {\small Complete header};
 
 		\draw [fill=white] (10.5, 0) rectangle (15, 1);
 		\node [anchor=center] at (12.75, 0.5) {\small\makecell{Segment(s)}};
@@ -89,40 +88,74 @@ struct luks2_hdr_disk {
 \begin{figure}[htb!]
 	\ttfamily
 	\scriptsize
-	\begin{tabular}{c|*{16}{c}|l}
-		0000 & \cellcolor{tPink}4C & \cellcolor{tPink}55 & \cellcolor{tPink}4B & \cellcolor{tPink}53 & \cellcolor{tPink}BA & \cellcolor{tPink}BE & \cellcolor{tOrng}00 & \cellcolor{tOrng}02 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}40 & \cellcolor{tYlow}00 & \coltxt{tPink}{LUKSº¾}\coltxt{tOrng}{..}\coltxt{tYlow}{......@.} \\
-		0010 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}03 & \cellcolor{tLblu}54 & \cellcolor{tLblu}68 & \cellcolor{tLblu}69 & \cellcolor{tLblu}73 & \cellcolor{tLblu}20 & \cellcolor{tLblu}69 & \cellcolor{tLblu}73 & \cellcolor{tLblu}20 & \coltxt{tGren}{........}\coltxt{tLblu}{This is } \\
-		0020 & \cellcolor{tLblu}61 & \cellcolor{tLblu}6E & \cellcolor{tLblu}20 & \cellcolor{tLblu}41 & \cellcolor{tLblu}53 & \cellcolor{tLblu}43 & \cellcolor{tLblu}49 & \cellcolor{tLblu}49 & \cellcolor{tLblu}20 & \cellcolor{tLblu}6C & \cellcolor{tLblu}61 & \cellcolor{tLblu}62 & \cellcolor{tLblu}65 & \cellcolor{tLblu}6C & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \coltxt{tLblu}{an ASCII label..} \\
-		0030 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \coltxt{tLblu}{................} \\
-		0040 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tLblu}00 & \cellcolor{tBlue}73 & \cellcolor{tBlue}68 & \cellcolor{tBlue}61 & \cellcolor{tBlue}32 & \cellcolor{tBlue}35 & \cellcolor{tBlue}36 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \coltxt{tLblu}{........}\coltxt{tBlue}{sha256..} \\
-		0050 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \coltxt{tBlue}{................} \\
-		0060 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tBlue}00 & \cellcolor{tPurp}EB & \cellcolor{tPurp}0F & \cellcolor{tPurp}D2 & \cellcolor{tPurp}C6 & \cellcolor{tPurp}E3 & \cellcolor{tPurp}D2 & \cellcolor{tPurp}8D & \cellcolor{tPurp}4B & \coltxt{tBlue}{........}\coltxt{tPurp}{ë.ÒÆãÒ.K} \\
-		0070 & \cellcolor{tPurp}BB & \cellcolor{tPurp}2B & \cellcolor{tPurp}8A & \cellcolor{tPurp}49 & \cellcolor{tPurp}E6 & \cellcolor{tPurp}2E & \cellcolor{tPurp}4E & \cellcolor{tPurp}B7 & \cellcolor{tPurp}04 & \cellcolor{tPurp}2F & \cellcolor{tPurp}A9 & \cellcolor{tPurp}39 & \cellcolor{tPurp}76 & \cellcolor{tPurp}71 & \cellcolor{tPurp}8F & \cellcolor{tPurp}8A & \coltxt{tPurp}{»+ŠIæ.N·./©9vq.Š} \\
-		0080 & \cellcolor{tPurp}33 & \cellcolor{tPurp}E8 & \cellcolor{tPurp}F3 & \cellcolor{tPurp}90 & \cellcolor{tPurp}FF & \cellcolor{tPurp}DC & \cellcolor{tPurp}4D & \cellcolor{tPurp}3D & \cellcolor{tPurp}E8 & \cellcolor{tPurp}30 & \cellcolor{tPurp}7B & \cellcolor{tPurp}37 & \cellcolor{tPurp}01 & \cellcolor{tPurp}30 & \cellcolor{tPurp}E7 & \cellcolor{tPurp}5D & \coltxt{tPurp}{3èó.ÿÜM=è0\{7.0ç]} \\
-		0090 & \cellcolor{tPurp}AD & \cellcolor{tPurp}A0 & \cellcolor{tPurp}57 & \cellcolor{tPurp}1C & \cellcolor{tPurp}0E & \cellcolor{tPurp}63 & \cellcolor{tPurp}BC & \cellcolor{tPurp}D4 & \cellcolor{tPurp}DD & \cellcolor{tPurp}3C & \cellcolor{tPurp}EC & \cellcolor{tPurp}F5 & \cellcolor{tPurp}DE & \cellcolor{tPurp}67 & \cellcolor{tPurp}F8 & \cellcolor{tPurp}D8 & \coltxt{tPurp}{..W..c¼ÔÝ<ìõÞgøØ} \\
-		00A0 & \cellcolor{tPurp}F2 & \cellcolor{tPurp}7E & \cellcolor{tPurp}82 & \cellcolor{tPurp}CD & \cellcolor{tPurp}B9 & \cellcolor{tPurp}DD & \cellcolor{tPurp}77 & \cellcolor{tPurp}10 & \cellcolor{tRose}65 & \cellcolor{tRose}39 & \cellcolor{tRose}33 & \cellcolor{tRose}64 & \cellcolor{tRose}63 & \cellcolor{tRose}61 & \cellcolor{tRose}66 & \cellcolor{tRose}61 & \coltxt{tPurp}{ò\nicetilde{}‚Í¹Ýw.}\coltxt{tRose}{e93dcafa} \\
-		00B0 & \cellcolor{tRose}2D & \cellcolor{tRose}65 & \cellcolor{tRose}65 & \cellcolor{tRose}30 & \cellcolor{tRose}62 & \cellcolor{tRose}2D & \cellcolor{tRose}34 & \cellcolor{tRose}31 & \cellcolor{tRose}36 & \cellcolor{tRose}38 & \cellcolor{tRose}2D & \cellcolor{tRose}61 & \cellcolor{tRose}61 & \cellcolor{tRose}37 & \cellcolor{tRose}63 & \cellcolor{tRose}2D & \coltxt{tRose}{-ee0b-4168-aa7c-} \\
-		00C0 & \cellcolor{tRose}66 & \cellcolor{tRose}33 & \cellcolor{tRose}30 & \cellcolor{tRose}34 & \cellcolor{tRose}37 & \cellcolor{tRose}34 & \cellcolor{tRose}38 & \cellcolor{tRose}38 & \cellcolor{tRose}36 & \cellcolor{tRose}61 & \cellcolor{tRose}32 & \cellcolor{tRose}65 & \cellcolor{tRose}00 & \cellcolor{tRose}00 & \cellcolor{tRose}00 & \cellcolor{tRose}00 & \coltxt{tRose}{f30474886a2e....} \\
-		00D0 & \cellcolor{tPink}54 & \cellcolor{tPink}68 & \cellcolor{tPink}69 & \cellcolor{tPink}73 & \cellcolor{tPink}20 & \cellcolor{tPink}69 & \cellcolor{tPink}73 & \cellcolor{tPink}20 & \cellcolor{tPink}61 & \cellcolor{tPink}6E & \cellcolor{tPink}20 & \cellcolor{tPink}6F & \cellcolor{tPink}70 & \cellcolor{tPink}74 & \cellcolor{tPink}69 & \cellcolor{tPink}6F & \coltxt{tPink}{This is an optio} \\
-		00E0 & \cellcolor{tPink}6E & \cellcolor{tPink}61 & \cellcolor{tPink}6C & \cellcolor{tPink}20 & \cellcolor{tPink}73 & \cellcolor{tPink}65 & \cellcolor{tPink}63 & \cellcolor{tPink}6F & \cellcolor{tPink}6E & \cellcolor{tPink}64 & \cellcolor{tPink}61 & \cellcolor{tPink}72 & \cellcolor{tPink}79 & \cellcolor{tPink}20 & \cellcolor{tPink}6C & \cellcolor{tPink}61 & \coltxt{tPink}{nal secondary la} \\
-		00F0 & \cellcolor{tPink}62 & \cellcolor{tPink}65 & \cellcolor{tPink}6C & \cellcolor{tPink}00 & \cellcolor{tPink}00 & \cellcolor{tPink}00 & \cellcolor{tPink}00 & \cellcolor{tPink}00 & \cellcolor{tPink}00 & \cellcolor{tPink}00 & \cellcolor{tPink}00 & \cellcolor{tPink}00 & \cellcolor{tPink}00 & \cellcolor{tPink}00 & \cellcolor{tPink}00 & \cellcolor{tPink}00 & \coltxt{tPink}{bel.............} \\
-		0100 & \cellcolor{tOrng}00 & \cellcolor{tOrng}00 & \cellcolor{tOrng}00 & \cellcolor{tOrng}00 & \cellcolor{tOrng}00 & \cellcolor{tOrng}00 & \cellcolor{tOrng}00 & \cellcolor{tOrng}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \coltxt{tOrng}{........}\coltxt{tYlow}{........} \\
-		0110 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \coltxt{tYlow}{................} \\
-		0120 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \coltxt{tYlow}{................} \\
-		0130 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \coltxt{tYlow}{................} \\
-		0140 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \coltxt{tYlow}{................} \\
-		0150 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \coltxt{tYlow}{................} \\
-		0160 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \coltxt{tYlow}{................} \\
-		0170 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \coltxt{tYlow}{................} \\
-		0180 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \coltxt{tYlow}{................} \\
-		0190 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \coltxt{tYlow}{................} \\
-		01A0 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \coltxt{tYlow}{................} \\
-		01B0 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \cellcolor{tYlow}00 & \coltxt{tYlow}{................} \\
-		01C0 & \cellcolor{tGren}91 & \cellcolor{tGren}A4 & \cellcolor{tGren}A9 & \cellcolor{tGren}83 & \cellcolor{tGren}03 & \cellcolor{tGren}FF & \cellcolor{tGren}FB & \cellcolor{tGren}68 & \cellcolor{tGren}4E & \cellcolor{tGren}C2 & \cellcolor{tGren}94 & \cellcolor{tGren}6F & \cellcolor{tGren}4C & \cellcolor{tGren}78 & \cellcolor{tGren}71 & \cellcolor{tGren}AF & \coltxt{tGren}{‘¤©ƒ.ÿûhNÂ”oLxq¯} \\
-		01D0 & \cellcolor{tGren}AE & \cellcolor{tGren}1A & \cellcolor{tGren}91 & \cellcolor{tGren}F8 & \cellcolor{tGren}E0 & \cellcolor{tGren}2C & \cellcolor{tGren}F3 & \cellcolor{tGren}71 & \cellcolor{tGren}D5 & \cellcolor{tGren}17 & \cellcolor{tGren}CB & \cellcolor{tGren}60 & \cellcolor{tGren}E5 & \cellcolor{tGren}2F & \cellcolor{tGren}D6 & \cellcolor{tGren}36 & \coltxt{tGren}{®.‘øà,óqÕ.Ë`å/Ö6} \\
-		01E0 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \coltxt{tGren}{................} \\
-		01F0 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \cellcolor{tGren}00 & \coltxt{tGren}{................}
-	\end{tabular}
+	\begin{NiceTabular}{c|*{16}{c}|l}
+	\CodeBefore
+		\rectanglecolor{tPink}{1-2}{1-7}    \rectanglecolor{tOrng}{1-8}{1-9}     \rectanglecolor{tYlow}{1-10}{1-17}
+		\rectanglecolor{tGren}{2-2}{2-9}    \rectanglecolor{tLblu}{2-10}{2-17}
+		\rectanglecolor{tLblu}{3-2}{3-17}
+		\rectanglecolor{tLblu}{4-2}{4-17}
+		\rectanglecolor{tLblu}{5-2}{5-9}    \rectanglecolor{tBlue}{5-10}{5-17}
+		\rectanglecolor{tBlue}{6-2}{6-17}
+		\rectanglecolor{tBlue}{7-2}{7-9}    \rectanglecolor{tPurp}{7-10}{7-17}
+		\rectanglecolor{tPurp}{8-2}{8-17}
+		\rectanglecolor{tPurp}{9-2}{9-17}
+		\rectanglecolor{tPurp}{10-2}{10-17}
+		\rectanglecolor{tPurp}{11-2}{11-9}  \rectanglecolor{tRose}{11-10}{11-17}
+		\rectanglecolor{tRose}{12-2}{12-17}
+		\rectanglecolor{tRose}{13-2}{13-17}
+		\rectanglecolor{tPink}{14-2}{14-17}
+		\rectanglecolor{tPink}{15-2}{15-17}
+		\rectanglecolor{tPink}{16-2}{16-17}
+		\rectanglecolor{tOrng}{17-2}{17-9}  \rectanglecolor{tYlow}{17-10}{17-17}
+		\rectanglecolor{tYlow}{18-2}{18-17}
+		\rectanglecolor{tYlow}{19-2}{19-17}
+		\rectanglecolor{tYlow}{20-2}{20-17}
+		\rectanglecolor{tYlow}{21-2}{21-17}
+		\rectanglecolor{tYlow}{22-2}{22-17}
+		\rectanglecolor{tYlow}{23-2}{23-17}
+		\rectanglecolor{tYlow}{24-2}{24-17}
+		\rectanglecolor{tYlow}{25-2}{25-17}
+		\rectanglecolor{tYlow}{26-2}{26-17}
+		\rectanglecolor{tYlow}{27-2}{27-17}
+		\rectanglecolor{tYlow}{28-2}{28-17}
+		\rectanglecolor{tGren}{29-2}{29-17}
+		\rectanglecolor{tGren}{30-2}{30-17}
+		\rectanglecolor{tGren}{31-2}{31-17}
+		\rectanglecolor{tGren}{32-2}{32-17}
+	\Body
+	    0000 & 4C & 55 & 4B & 53 & BA & BE & 00 & 02 & 00 & 00 & 00 & 00 & 00 & 00 & 40 & 00 & \coltxt{tPink}{LUKSº¾}\coltxt{tOrng}{..}\coltxt{tYlow}{......@.} \\
+        0010 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 03 & 54 & 68 & 69 & 73 & 20 & 69 & 73 & 20 & \coltxt{tGren}{........}\coltxt{tLblu}{This is } \\
+        0020 & 61 & 6E & 20 & 41 & 53 & 43 & 49 & 49 & 20 & 6C & 61 & 62 & 65 & 6C & 00 & 00 & \coltxt{tLblu}{an ASCII label..} \\
+        0030 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tLblu}{................} \\
+        0040 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 73 & 68 & 61 & 32 & 35 & 36 & 00 & 00 & \coltxt{tLblu}{........}\coltxt{tBlue}{sha256..} \\
+        0050 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tBlue}{................} \\
+        0060 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & EB & 0F & D2 & C6 & E3 & D2 & 8D & 4B & \coltxt{tBlue}{........}\coltxt{tPurp}{ë.ÒÆãÒ.K} \\
+        0070 & BB & 2B & 8A & 49 & E6 & 2E & 4E & B7 & 04 & 2F & A9 & 39 & 76 & 71 & 8F & 8A & \coltxt{tPurp}{»+ŠIæ.N·./©9vq.Š} \\
+        0080 & 33 & E8 & F3 & 90 & FF & DC & 4D & 3D & E8 & 30 & 7B & 37 & 01 & 30 & E7 & 5D & \coltxt{tPurp}{3èó.ÿÜM=è0\{7.0ç]} \\
+        0090 & AD & A0 & 57 & 1C & 0E & 63 & BC & D4 & DD & 3C & EC & F5 & DE & 67 & F8 & D8 & \coltxt{tPurp}{..W..c¼ÔÝ<ìõÞgøØ} \\
+        00A0 & F2 & 7E & 82 & CD & B9 & DD & 77 & 10 & 65 & 39 & 33 & 64 & 63 & 61 & 66 & 61 & \coltxt{tPurp}{ò\nicetilde{}‚Í¹Ýw.}\coltxt{tRose}{e93dcafa} \\
+        00B0 & 2D & 65 & 65 & 30 & 62 & 2D & 34 & 31 & 36 & 38 & 2D & 61 & 61 & 37 & 63 & 2D & \coltxt{tRose}{-ee0b-4168-aa7c-} \\
+        00C0 & 66 & 33 & 30 & 34 & 37 & 34 & 38 & 38 & 36 & 61 & 32 & 65 & 00 & 00 & 00 & 00 & \coltxt{tRose}{f30474886a2e....} \\
+        00D0 & 54 & 68 & 69 & 73 & 20 & 69 & 73 & 20 & 61 & 6E & 20 & 6F & 70 & 74 & 69 & 6F & \coltxt{tPink}{This is an optio} \\
+        00E0 & 6E & 61 & 6C & 20 & 73 & 65 & 63 & 6F & 6E & 64 & 61 & 72 & 79 & 20 & 6C & 61 & \coltxt{tPink}{nal secondary la} \\
+        00F0 & 62 & 65 & 6C & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tPink}{bel.............} \\
+        0100 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tOrng}{........}\coltxt{tYlow}{........} \\
+        0110 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tYlow}{................} \\
+        0120 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tYlow}{................} \\
+        0130 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tYlow}{................} \\
+        0140 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tYlow}{................} \\
+        0150 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tYlow}{................} \\
+        0160 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tYlow}{................} \\
+        0170 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tYlow}{................} \\
+        0180 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tYlow}{................} \\
+        0190 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tYlow}{................} \\
+        01A0 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tYlow}{................} \\
+        01B0 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tYlow}{................} \\
+        01C0 & 91 & A4 & A9 & 83 & 03 & FF & FB & 68 & 4E & C2 & 94 & 6F & 4C & 78 & 71 & AF & \coltxt{tGren}{‘¤©ƒ.ÿûhNÂ”oLxq¯} \\
+        01D0 & AE & 1A & 91 & F8 & E0 & 2C & F3 & 71 & D5 & 17 & CB & 60 & E5 & 2F & D6 & 36 & \coltxt{tGren}{®.‘øà,óqÕ.Ë`å/Ö6} \\
+        01E0 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tGren}{................} \\
+        01F0 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & 00 & \coltxt{tGren}{................}
+	\end{NiceTabular}
 	\caption[
 		LUKS2 binary header example
 	]{
@@ -131,7 +164,7 @@ struct luks2_hdr_disk {
 	\label{fig:background.luks2.binhdrexample}
 \end{figure}
 
-The sector containing the binary header is followed by the JSON area. This area arguably contains the metadata that is most relevant for decryption and encryption. \autoref{fig:background.luks2.jsonobjects} contains an overview of the objects stored in JSON and their relationships. For this thesis' brevity's sake, please refer to Chapter 3.1 in \cite{Broz2018} for an example of a LUKS2 JSON area.
+The sector containing the binary header is followed by the JSON area. This area contains the metadata that is arguably most relevant for decryption and encryption. \autoref{fig:background.luks2.jsonobjects} contains an overview of the objects stored in JSON and their relationships. For this thesis' brevity's sake, please refer to chapter 3.1 in \cite{Broz2018} for an example of a LUKS2 JSON area.
 
 \begin{figure}[htb!]
 	\center
@@ -163,13 +196,13 @@ After the JSON area, the keyslots area is stored on the disk. This is space rese
 
 \subsubsection{Unlocking a Partition}
 \label{chap:background.luks2.unlocking}
-For simplicity, our LUKS2 Rust library does not support unlocking a keyslot using an external keystore defined by a token. Only unlocking via password is implemented. The library does however include support for different \emph{password-based key derivation functions (PBKDFs)}, namely \texttt{pbkdf2} with SHA-256, \texttt{argon2i}, and \texttt{argon2id}. These are all the PBKDF algorithms that are listed in the LUKS2 specification (see \cite{Broz2018}, Table 3). The default PBKDF used by LUKS2 is \texttt{argon2i} \cite{Cryptsetup2020}.
+For simplicity, our LUKS2 Rust library does not support unlocking a keyslot using an external keystore defined by a token, even though \autoref{fig:background.luks2.jsonobjects} mentions this possibility. Only unlocking via password is implemented. The library does however include support for different \emph{password-based key derivation functions (PBKDFs)}, namely \texttt{pbkdf2} with SHA-256, \texttt{argon2i}, and \texttt{argon2id}. These are all the PBKDF algorithms that are listed in the LUKS2 specification (see \cite{Broz2018}, Table 3). The default PBKDF used by LUKS2 is \texttt{argon2i} \cite{Cryptsetup2020}. In the following paragraphs, it will become apparent what PBKDFs are used for in LUKS2\footnote{\label{fn:background.luks2.pbkdfs} It will also become apparent that they are quite aptly named.}.
 
 The LUKS2 specification allows for multiple segments in one partition. To make things easier, our driver only supports unlocking one segment. Therefore, in this thesis we may speak of unlocking a partition and mean unlocking one of the partition's segments.
 
 To unlock a segment means to derive the cryptographic key that is needed for reading decrypted or writing encrypted data. This key is called the segment's \emph{master key}.
 
-LUKS2 uses a process called \emph{anti-forensic splitting} to store the master key on the disk. This method was introduced in \cite{Fruhwirth2005}. It is used to diffuse the key's bytes into a longer sequence of bytes that has the following property: if at least one bit of the diffused sequence is changed, the key cannot be recovered. This is achieved by a clever combination of XOR and a hash function. The motivation behind this to make it easier (or possible) to dispose of an old key in such a way that it cannot be recovered from the disk. This is because it is much more feasible to partially erase a long sequence of bytes than to completely erase a short sequence. Erasing here means to overwrite the data in such a way that it cannot be recovered, which is not as trivial as one might think.
+LUKS2 uses a process called \emph{anti-forensic splitting} to store the master key on disk. This method was introduced in \cite{Fruhwirth2005}. It is used to diffuse the key's bytes into a longer sequence of bytes that has the following property: if at least one bit of the diffused sequence is changed, the key cannot be recovered. This is achieved by a clever combination of XOR and a hash function. The motivation behind this to make it easier (or possible) to dispose of an old key in such a way that it cannot be recovered from the disk. This is because it is much more feasible to partially erase a long sequence of bytes than to completely erase a short sequence. Erasing here means to overwrite the data in such a way that it cannot be recovered, which is not as trivial as one might think.
 
 \cite{Fruhwirth2005} calls the operation that splits data anti-forensically AFsplit and the recovery operation AFmerge. We will adhere to this convention (with slight variations).
 
@@ -276,51 +309,306 @@ The keyslots area on the disk is large enough to store multiple split and encryp
 	\caption[
 		LUKS2 master key decryption with multiple available keyslots
 	]{
-		LUKS2 master key decryption with multiple available keyslots. LUKS2 allows defining priorities that govern the order in that the available keyslots are tried. For a more detailed pseudocode see Figure 5 in \cite{Fruwirth2018}.
+		LUKS2 master key decryption with multiple available keyslots. LUKS2 also allows defining priorities that govern the order in which the available keyslots are tried. For a more detailed pseudocode see Figure 5 in \cite{Fruwirth2018}.
 	}
 	\label{fig:background.luks2.unlocking}
 \end{figure}
 
 \subsubsection{Using an Unlocked Partition}
 \label{chap:background.luks2.using}
-After a partition has been unlocked, i.e. after the master key of one of its segments has been decrypted, the partition is ready to be read from and written to. This happens using what \autoref{fig:background.luks2.tks2} calls a real time cipher. LUKS2 supports different encryption algorithms for this purpose, see \autoref{fig:background.luks2.encryptionalgorithms} for a selection of them. Our driver only supports the default aes-xts-plain64 encryption. Therefore we will focus on that in this section.
+After a partition has been unlocked, i.e. after the master key of one of its segments has been decrypted, the partition is ready to be read from and written to. This happens using what \autoref{fig:background.luks2.tks2} calls a real time cipher. LUKS2 supports different encryption algorithms for this purpose, see \autoref{tbl:background.luks2.encryptionalgorithms} for a selection of them. Our driver only supports the default aes-xts-plain64 encryption. Therefore, we will focus on that in this section.
 
-\begin{figure}[htb!]
+\begin{table}[htb!]
 	\center
-	\begin{tabular}{cc}
-		\makecell{\textbf{Algorithm}\\in \texttt{dm-crypt} notation} & \textbf{Description} \\
-		\hline
-		aes-xts-plain64 & AES in XTS mode with sequential IV \\
-		aes-cbc-essiv:sha256 & AES in CBC mode with ESSIV IV \\
-		serpent-xts-plain64 & Serpent cipher with sequential IV \\
-		twofish-xts-plain64 & Twofish cipher with sequential IV
-	\end{tabular}
+	\def\arraystretch{1.25}
+	\begin{NiceTabular}{cc}
+	\CodeBefore
+		\rectanglecolor{gray!30}{1-1}{2-2}
+	\Body
+		\hlineB{2}
+		\textbf{Algorithm}            & \textbf{Description} \\
+		in \texttt{dm-crypt} notation &                      \\
+		\hlineB{1.5}
+		aes-xts-plain64      & \makecell{AES in XTS mode with sequential IV} \\
+		aes-cbc-essiv:sha256 & \makecell{AES in CBC mode with ESSIV IV}      \\
+		serpent-xts-plain64  & \makecell{Serpent cipher with sequential IV}  \\
+		twofish-xts-plain64  & \makecell{Twofish cipher with sequential IV}  \\
+		\hlineB{2}
+	\end{NiceTabular}
 	\caption[
 		Selection of LUKS2 encryption algorithms
 	]{
 		Selection of LUKS2 encryption algorithms (modified after \cite{Broz2018}). The \texttt{dm-crypt} notation follows this format: cipher[:keycount]-chainmode-ivmode[:ivopts] \cite{Dmcrypt2020}. See \cite{Ferguson2010} for the CBC mode and the Serpent and Twofish ciphers, and \cite{Fruhwirth2005} for the ESSIV IV mode.
 	}
-	\label{fig:background.luks2.encryptionalgorithms}
-\end{figure}
+	\label{tbl:background.luks2.encryptionalgorithms}
+\end{table}
 
-The AES encryption algorithm is a block cipher for processing 128 bit data blocks \cite{Fips197}. To encrypt data longer than one block, a \emph{block cipher mode} is needed \cite{Ferguson2010}. These are encryption functions that build on a existing block cipher. When using aes-xts-plain64, LUKS2 uses the XTS block cipher mode. The defining IEEE standard \cite{Ieee2019} describes it as follows: ``XTS-AES is a tweakable block cipher that acts on data units of 128 b[its] or more and uses the AES block cipher as a subroutine. The key material for XTS-AES consists of a data encryption key (used by the AES block cipher) as well as a `tweak key' that is used to incorporate the logical position of the data block into the encryption.'' This tweak key is called the \emph{initialization vector}, or IV, in the context of LUKS2. This is what the ``plain64'' in aes-xts-plain64 means: ``the initial vector is the 64-bit little-endian version of the sector number, padded with zeros if necessary'' \cite{Dmcrypt2020}. This sector number is relative to the first sector of the segment, i.e. the first sector uses an IV of 0.
+The AES encryption algorithm is a block cipher for processing 128 bit data blocks \cite{Fips197}. This means that AES takes a key and 128 bits, or 16 bytes, of data, and generates 16 bytes of encrypted data, called ciphertext. Using the same key, this ciphertext can be decrypted back to the original plaintext data. The key can be 128, 192, or 256 bits long. The three variants of AES, each using a different key size, are called AES-128, AES-192, and AES-256.
+
+To encrypt data longer than one block, a \emph{block cipher mode} is needed \cite{Ferguson2010}. These are encryption functions that build on a existing block cipher. When using aes-xts-plain64, LUKS2 uses the XTS block cipher mode. The defining IEEE standard \cite{Ieee2019} describes it as follows: ``XTS-AES is a tweakable block cipher that acts on data units of 128 b[its] or more and uses the AES block cipher as a subroutine. The key material for XTS-AES consists of a data encryption key (used by the AES block cipher) as well as a `tweak key' that is used to incorporate the logical position of the data block into the encryption.'' This tweak key is called the \emph{initialization vector}, or IV, in the context of LUKS2. This is what the ``plain64'' in aes-xts-plain64 means: ``the initial vector is the 64-bit little-endian version of the sector number, padded with zeros if necessary'' \cite{Dmcrypt2020}. This sector number is relative to the first sector of the segment, i.e. the first sector uses an IV of 0.
 
 The need for an IV arises from a critical problem that occurs when encrypting each block separately with the same key: if some unencrypted blocks are identical, then so will be their encrypted counterparts. This can lead to leaked information about structure and contents of the plaintext \cite{Ferguson2010}.
 
-All this theory may sound complicated, but in \autoref{chap:ourapproach.final.de_encrypting} we will see that the practical usage is quite simple\footnote{\label{fn:background.luks2.simplecryptography} The implementation of cryptographic algorithms of course remains non-trivial. Implementing AES itself has been made much easier using the AES-NI CPU instruction set, though.}.
+All this theory may sound complicated, but in \autoref{chap:ourapproach.final.de_encrypting} we will see that the practical usage of cryptography in our driver is quite simple\footnote{\label{fn:background.luks2.simplecryptography} The implementation of cryptographic algorithms like the XTS mode of course remains non-trivial. Implementing AES itself has been made much easier using the AES-NI CPU instruction set, though.}.
 
 \subsection{Introduction to Windows Kernel Driver Development}
 \label{chap:background.kerneldriver}
-This section gives an introduction on the development of Windows kernel drivers and related important concepts.
+\todo{This section gives an introduction on the development of Windows kernel drivers and}\\\todo{important related background information and concepts.}
 
 \subsubsection{Structure and Hierarchy of the Windows Operating System}
 \label{chap:background.kerneldriver.oshierarchy}
-\todo{Roughly summarize important concepts from chapters 1 and 2 of \cite{Yosifovich2017}}
+% possible further content for this or later sections
+% - WinDbg (or in a later (sub)section) (page 38)
+% - DLLs?
+% - processes? (page 8) threads? (page 18)
+First, we will introduce some basic concepts of the Windows operating system that will be relevant in the following sections. Please note that we will focus on Windows 10 running on the x64 architecture, as that is the target of our driver. Some details may be different in other versions of Windows, though most information should still be valid.
 
-\subsubsection{The Windows Driver Model for Kernel Drivers}
+The definitive reference for all detailed information on the inner workings of Windows is \cite{Yosifovich2017}. The online documentation of the Windows SDK\footnote{\label{fn:background.kerneldriver.sdkdoc} \url{https://docs.microsoft.com/en-us/windows/apps/desktop}} and the Windows Driver Kit\footnote{\label{fn:background.kerneldriver.wdkdoc} \url{https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi}} (WDK) both provide valuable information. It may also sometimes be useful to directly look at the data structure definitions provided by the WDK header files (\texttt{ntddk.h}, \texttt{ntifs.h}, and \texttt{wdm.h} are the most useful) \cite{Yosifovich2017}.
+
+There are also some invaluable tools to directly take a look at OS internals. Most of them are from the Sysinternals\footnote{\label{fn:background.kerneldriver.sysinternals} The executables can be downloaded from \url{https://live.sysinternals.com} and are accompanied by documentation in \cite{Russinovich2016}.} Suite, others are included with Windows. See table 1-4 in \cite{Yosifovich2017} for a more detailed compilation.
+
+The Windows \emph{registry} is a database for storing system-wide and per-user configuration. It can also be used to query the current state of the system, e.g. performance counters or information on loaded device drivers \cite{Yosifovich2017}. Each data entry in the registry, called a \emph{value}, has a path, also known as its \emph{key}, and a name. This name is used to distinguish different entries stored under the same key. The keys are organized hierarchically in a tree, similar to file paths \cite{Registry2018}. In the context of registry keys, \texttt{HKLM} stands for \texttt{HKEY\_LOCAL\_MACHINE}.
+
+Windows uses the physically available RAM to back its 64-bit address space of virtual memory. See \autoref{fig:background.kerneldriver.winvirtualmemory} for how the address range is used. The addresses are grouped into so-called \emph{pages}, which are typically 4KB large. Most systems have less physical RAM available than the sum of virtual memory used by all processes. The memory manager solves this problem by transferring pages currently not in use to disk. This is called \emph{paging}. When a virtual address in a page that currently resides on disk is accessed, a \emph{page fault} occurs. In that case, the needed page is loaded back into memory. This process is completely transparent to applications, aside from latency introduced by paging. However, this will become relevant when writing drivers, as driver code may be called in situations where page faults are not allowed (see \autoref{chap:background.kerneldriver.wdm} for more) \cite{Yosifovich2017}.
+
+\begin{figure}[htb!]
+	\center
+	\begin{tikzpicture}
+		\node[rect, fill=tPink,     from={4.25, 3   to 7.25, 5}]   {\small\makecell{128 TB\\System Space}};
+		\node[rect, fill={gray!30}, from={4.25, 2.1 to 7.25, 2.9}] {\small Unmapped};
+		\node[rect, fill=tOrng,     from={4.25, 0   to 7.25, 2}]   {\small\makecell{128 TB\\User Process\\Space}};
+
+		\node[anchor=west] at (0.25, 0)    {\footnotesize\texttt{0x00000000'00000000}};
+		\node[anchor=west] at (0.25, 2.05) {\footnotesize\texttt{0x00008000'00000000}};
+		\node[anchor=west] at (0.25, 2.95) {\footnotesize\texttt{0xFFFF8000'00000000}};
+		\node[anchor=west] at (0.25, 5)    {\footnotesize\texttt{0xFFFFFFFF'FFFFFFFF}};
+
+		%\draw[arrow] (0, 0) -- (0, 5);
+		%\node[anchor=east, xshift=-4pt] at (0, 0) {Low addresses};
+		%\node[anchor=east, xshift=-4pt] at (0, 5) {High addresses};
+	\end{tikzpicture}
+	\caption[
+		Address space layout for 64-bit Windows 10.
+	]{
+		Address space layout (not to scale) for 64-bit Windows 10 (modified after \cite{Yosifovich2017}). % combination of elements from Figure 1-4 and 5-13 in \cite{Yosifovich2017}
+		Each process has its own copy of the user process space\footnotemark.
+	}
+	\label{fig:background.kerneldriver.winvirtualmemory}
+\end{figure}
+\footnotetext{\label{fn:background.kerneldriver.virtualmemory} Sven Peter has a nice quote on this topic on his \href{https://blog.svenpeter.dev/posts/m1_sprr_gxf/}{blog}: ``One of the kernel's tasks is to lie to each application running in userland and to tell them that they're the only one in the address space.'' \todo{ensure correct position}}
+
+\autoref{fig:background.kerneldriver.winarchitecture} shows a simplified view of the architecture of Windows. It also differentiates between \emph{user mode} and \emph{kernel mode}. The difference is that when a process is running in kernel mode, it has access to all CPU instructions, the whole system memory. Kernel mode also allows direct access to hardware. User mode, on the other hand, only allows access to a limited subset of all that. To protect the OS from user applications and to also isolate different programs from each other, user applications run in user mode. Kernel mode is reserved for OS code, such as drivers and system services. This separation ensures that an incorrectly programmed or malicious program cannot jeopardize the whole system's stability and/or data integrity \cite{Yosifovich2017}.
+
+\begin{figure}[htb!]
+	\center
+	\begin{tikzpicture}
+		\node[rect, fill=tPink, from={0, 7.7   to 3, 8.3}]  {\small System Processes};
+		\node[rect, fill=tOrng, from={4, 7.7   to 7, 8.3}]  {\small Service Processes};
+		\node[rect, fill=tYlow, from={8, 7.7   to 11, 8.3}] {\small User Processes};
+		\node[rect, fill=tGren, from={1.5, 6.7 to 11, 7.3}] {\small Subsystem DLLs};
+		\node[rect, fill=tLblu, from={0, 5.7   to 11, 6.3}] {\small Ntdll.dll};
+
+		\node[anchor=south] at (12.5, 5.5) {\small User mode};
+		\draw[color=red, thick] (-0.25, 5.5) -- (13.75, 5.5);
+		\node[anchor=north] at (12.5, 5.5) {\small Kernel mode};
+
+		\node[rect, fill=tBlue,     from={0, 4.7 to 11, 5.3}] {\small Executive};
+		\node[rect, fill=tPurp,     from={0, 3.7 to 5, 4.3}]  {\small Device Drivers};
+		\node[rect, fill=tRose,     from={6, 3.7 to 11, 4.3}] {\small Kernel};
+		\node[rect, fill={gray!30}, from={0, 2.7 to 11, 3.3}] {\small Hardware Abstraction Layer};
+
+		\draw[arrow] (0.75, 7.7) -- (0.75, 6.3);
+		\draw[arrow] (2.25, 7.7) -- (2.25, 7.3);
+		\draw[arrow] (5.5, 7.7)  -- (5.5, 7.3);
+		\draw[arrow] (9.5, 7.7)  -- (9.5, 7.3);
+		\draw[arrow] (6.25, 6.7) -- (6.25, 6.3);
+	\end{tikzpicture}
+	\caption[
+		Simplified Windows architecture
+	]{
+		Simplified Windows architecture (modified after \cite{Yosifovich2017}).
+		User processes are regular applications. The service process are responsible for hosting Windows services, such as the printer spooler or DNS client. System processes are fixed processes that are not started by the Service Control Manager. The Session Manager and the logon process are examples for system processes.
+		The subsystem dynamically linked libraries (DLLs) are responsible for translating public API functions into their corresponding internal system service calls. The latter are mostly implemented in Ntdll.dll.
+		% Windows includes several subsystems that ``expose some subset of the base Windows executive system services to application programs'' \cite{Yosifovich2017} through dynamically linked libraries (DLLs).
+		The executive and kernel are explained in detail later on. Finally, the purpose of the Hardware Abstraction Layer (HAL) is to separate the kernel and device drivers from hardware-specific differences. It is intended to be used by device drivers and therefore largely documented in the WDK.
+	}
+	\label{fig:background.kerneldriver.winarchitecture}
+\end{figure}
+
+The permission checks for user mode are enforced by the processor. Switching between user and kernel mode is achieved by executing a special CPU instruction called \texttt{syscall}. Prior to that, the user code specifies which system service it wants the kernel to execute\footnote{\label{fn:background.kerneldriver.syscalls} These system services are also referred to as system calls or syscalls, especially in the context of Linux.}. When kernel mode is activated, control is transferred from the application to a special part of the operating system. Its purpose is to dispatch control to the part of the OS that implements the requested system service. When that has been completed, the OS orders the processor to switch back into user mode and hands control back to the application \cite{Yosifovich2017}.
+
+Developers of regular applications will not come into contact with syscalls. Normally, these are the responsibility of Windows API subroutines. For example, the \texttt{CreateProcess} function will instruct the OS to create a new process by executing the \texttt{NtCreateUserProcess} syscall. Because they are not meant to be used by non-OS code, these system calls are not (officially) documented\footnote{\label{fn:background.kerneldriver.syscalldoc} There are unofficial resources that attempt to map out the space of Windows syscalls, even across different versions, e.g. \url{https://j00ru.vexillium.org/syscalls/nt/64/}.} \cite{Yosifovich2017}.
+
+As mentioned before, each user process has its own private address space. In contrast to that, all kernel-mode OS components and device drivers share one area of memory. Furthermore, all user mode addresses can also be accessed from kernel mode. Pages can however be marked as read-only, a restriction which not even the kernel can circumvent \cite{Yosifovich2017}.
+
+The fact that there exists only one global kernel address space means that special care must be taken when writing code that runs in kernel mode. A single malfunctioning driver can destabilize the complete system or even introduce critical security vulnerabilities. To aid in discovering bugs in drivers, Windows provides a \emph{Driver Verifier} tool \cite{Yosifovich2017}.
+
+It is also necessary to carefully choose which code is allowed to run in kernel mode. This is why Microsoft mandates that all third-party drivers for Windows 10 must be signed by one of two accepted certification authorities. They also have to be reviewed and signed by Microsoft. For testing purposes, Windows can be configured to load self-signed drivers. This is known as \emph{test mode} \cite{Yosifovich2017}.
+
+One part of the OS that runs in kernel mode is the Windows executive, which was already mentioned in \autoref{fig:background.kerneldriver.winarchitecture}. It is responsible for multiple things \cite{Yosifovich2017}:
+\begin{itemize}
+	\item The implementations of the aforementioned system services reside in the executive.
+	\item \texttt{DeviceIoControl}: not sure what the book means here, this just calls the NtDeviceIoControlFile syscall? \todo{look in VM with WinDbg what exactly happens here? screenshots?}\\\todo{if screenshots mention it when explaining syscalls above, may be a nice example}
+	\item The executive also provides implementations of functions that can be used by other kernel mode components. Some of them are documented, others are not. They generally fall into one of four categories: managing Windows executive objects that represent OS resources; message passing between client and server processes on the same machine; run-time helpers for e.g. processing strings or converting datatypes; and general support routines for allocating and accessing memory as well as some synchronization mechanisms, e.g. fast mutexes.
+	\item The executive can be categorized into different components, of which the following are most relevant when developing a device driver: the I/O manager, the Plug and Play (PnP) manager, and the Power manager. The functions exported by these components generally follow a naming scheme were their names start with \texttt{Io}, \texttt{Pp}, and \texttt{Po}, respectively. Please refer to table 2-5 in \cite{Yosifovich2017} for a more exhaustive list of commonly used prefixes of function names.
+	\item Shareable resources, e.g. files, processes, and events, are represented as objects by the executive to user mode code. The state of the represented resource is captured in data fields called the object's attributes. Objects are \emph{opaque}, i.e. their attributes can only be accessed through object methods. This makes the internal implementations of objects easily changeable\footnote{\label{fn:background.kerneldriver.oop} One can see why these representations were named objects, as they follow some of the core concepts of object-oriented programming.}. The object methods may also implement certain security and access checks. A reference to a object is called a \emph{handle}. Keeping track of these references allows the system to automatically recognize and deallocate objects that are no longer in use.
+\end{itemize}
+
+Another major kernel mode OS component is the Windows kernel, also already presented in \autoref{fig:background.kerneldriver.winarchitecture}. Its tasks include the following \cite{Yosifovich2017}:
+\begin{itemize}
+	\item It takes over the task of thread scheduling and (multi-processor) synchronization and also dispatches interrupts and exceptions. Aside from that, it avoids making policy decisions, and leaves this to the executive.
+	\item In general, one of the kernel's jobs is to conceal some of the differences of the different hardware architectures that Windows supports. It is assisted in this task by the HAL.
+	\item Intended for usage by other, higher-level components, including the executive, it provides low-level routines and basic data structures. These are partly documented and may be used in device drivers. The function names all start with the \texttt{Ke} prefix.
+	\item The exposed data structures are called \emph{kernel objects}. These are simpler than the executive's objects and therefore have no overhead for e.g. manipulation via handles or security checks. They are the building blocks for most executive-level objects.
+\end{itemize}
+
+\subsubsection{Windows Kernel Drivers and the Windows Driver Model}
 \label{chap:background.kerneldriver.wdm}
-\todo{Also explain how it gets loaded (if not done already)}
+Windows kernel drivers are modules that can be loaded and run kernel-mode. They are normally found in the form of files with the \texttt{.sys} extension. Drivers can be categorized as follows \cite{Yosifovich2017}:
+\begin{descitemize}
+	\item[Device drivers] As an interface between hardware and the I/O manager, these make use of the HAL to control retrieving input from or writing output to hardware.
+	\item[File system drivers] These translate file-oriented requests into raw I/O requests.
+	\item[File system filter drivers] These process incoming I/O requests or outgoing responses before passing them to the next driver. They can also reject an operation. The driver that this thesis is about falls into this category.
+	\item[Network drivers] These either implement networking protocols, like TCP/IP, or handle the transport of file system I/O between machines on a network.
+	\item[Streaming filter drivers] These are for data stream signal processing.
+	\item[Software drivers] These are helper kernel modules for user-mode programs. They are used when a desired operation, e.g. retrieving internal system information, is only available in kernel mode.
+\end{descitemize}
 
-\subsubsection{Communication Between Kernel and Userspace}
-\label{chap:background.kerneldriver.communication}
-\todo{Via ports}
+Drivers can be written using different models or frameworks. Windows NT 3.1 introduced the first driver model, which lacked PnP functionality. Windows 2000 introduced PnP support as well as an extended driver model known as the \emph{Windows Driver Model (WDM)} \cite{Yosifovich2017}. We will focus on WDM in this section, because that is the framework our driver uses (see \autoref{chap:ourapproach.final}). But there also exist other models and frameworks for Windows driver development, such as the Windows Driver Foundation (WDF). It tries to simplify things and provides the Kernel-Mode Driver Framework (KMDF) and the User-Mode Driver Framework (UMDF) \cite{Yosifovich2017}. We will explore some of the differences between them and WDM in \autoref{chap:ourapproach.failed}.
+
+WDM distinguishes between three types of drivers \cite{Yosifovich2017}:
+\begin{descitemize}
+	\item[Bus drivers] These are responsible for managing devices that have child devices, such as bus controllers, bridges, or adapters. They are generally provided by Microsoft because they are required for widely used buses like PCI and USB. It is nevertheless also possible for third parties to implement support for new bus types by supplying a bus driver.
+	\item[Function drivers] ``A function driver is the main device driver and provides the operational interface for its device.'' \cite{Yosifovich2017} Every device needs a function driver, if it is not used raw. This is a mode of operation where the bus driver manages I/O together with bus filter drivers.
+	\item[Filter drivers] These enhance an already existing driver or device by either adding functionality or modifying I/O requests and/or responses from other drivers. They are optional and the number of filter drivers for a device is not limited.
+\end{descitemize}
+
+In this model, the control over a device is not concentrated at one single driver, but rather shared between multiple drivers. A bus driver only informs the PnP manager about the devices connected to its bus, while the device's function driver handles the actual device manipulation and control. The drivers responsible for a device form a hierarchy called the \emph{device stack}. This defines the order in which the drivers process incoming and outgoing messages to or from the device: the uppermost driver receives incoming requests first and the lowermost one receives them last. For outgoing driver responses, this order is reversed \cite{Yosifovich2017}. See \autoref{fig:background.kerneldriver.devicestack} for an example of how such a device stack can look.
+
+\begin{figure}[htb!]
+	\center
+	\includegraphics[scale=0.7]{../img/background.kerneldriver.devicestack.png}
+	\caption[
+		Example of a device stack for a storage volume
+	]{
+		Example of a device stack for a storage volume (Screenshot from device properties in Windows Device Manager). \todo{Re-take screenshot on a 4K display} The official descriptions of the drivers listed in this example are, from top to bottom: ``Volume Shadow Copy driver'', ``Volume driver'', ``I/O rate control filter'', ``BitLocker Drive Encryption Driver'', and ``Volume Manager Driver''. As can be seen under the appropriate registry key\footnotemark, \texttt{fvevol} and \texttt{iorate} are lower filter drivers and \texttt{volsnap} is an upper filter driver. This leaves \texttt{volume} as the function driver and \texttt{volmgr} as the bus driver.
+	}
+	\label{fig:background.kerneldriver.devicestack}
+\end{figure}
+\footnotetext{\label{fn:background.kerneldriver.registryvolume} \texttt{HKLM\textbackslash SYSTEM\textbackslash CCS\textbackslash Control\textbackslash Class\textbackslash {71a27cdd-812a-11d0-bec7-08002be2092f}}, where \texttt{CCS} stands for \texttt{CurrentControlSet}. Later on in this section we will talk about the registry's role in driver management in more detail. \todo{ensure correct position}}
+
+The device stack is built by the PnP manager during a process called \emph{device enumeration}. This happens at system boot or when resuming from hibernation, but it can also be triggered manually. During enumeration, the PnP manager constructs a so-called \emph{device tree} that captures the parent-child relationships of devices. A node in this tree represents a physical device and is appropriately called a \emph{device node}, or short \emph{devnode}. When a new device is discovered, its required drivers are loaded (if they have not already been loaded). The drivers are then informed about the new device \cite{Yosifovich2017}.
+
+For all the drivers of a device, the PnP manager creates objects that are used for managing and representing the relationships between the drivers. These objects form the device stack. They are also a form of device object, however they don't represent a real, physical device, but rather a virtual one. See \autoref{fig:background.kerneldriver.devnode} for an example device node and the objects it is made of. There are the following types of objects in a device node, ordered from bottom to top by their occurrence in a devnode \cite{Yosifovich2017}:
+\begin{itemize}
+	\item exactly one \emph{physical device object (PDO)}, created by the bus driver. It is responsible for the physical device interface.
+	\item zero or more \emph{filter device objects (FiDOs)}, created by lower filter drivers (lower being relative to the FDO).
+	\item exactly one \emph{functional device object (FDO)}, created by the device's function driver. It is responsible for the logical device interface.
+	\item zero or more FiDOs, created by upper filter drivers.
+\end{itemize}
+
+This shows that filter drivers can be places either above the function driver (upper filter drivers) or between the function driver and the bus driver (lower filter drivers). These serve different purposes: ``In most cases, lower-level filter drivers modify the behavior of device hardware. For example, if a device reports to its bus driver that it requires 4 I/O ports when it actually requires 16 I/O ports, a lower-level, device-specific function filter driver could intercept the list of hardware resources reported by the bus driver to the PnP manager and update the count of I/O ports. Upper-level filter drivers usually provide added-value features for a device. For example, an upper-level device filter driver for a disk can enforce additional security checks.'' \cite{Yosifovich2017}
+
+\begin{figure}[htb!]
+	\center
+	\begin{tikzpicture}
+		\node[rect, fill=tYlow, from={0.2, 0.3 to 3.8, 7.1}] {\small Device node};
+		\node[rect, fill=tLblu, text width=5em] at (2, 6.4)  {\small FiDO};
+		\node[rect, fill=tLblu, text width=5em] at (2, 5.5)  {\small FiDO};
+		\node[rect, fill=tLblu, text width=5em] at (2, 4.6)  {\small FiDO};
+		\node[rect, fill=tGren, text width=5em] at (2, 2.8)  {\small FiDO};
+		\node[rect, fill=tGren, text width=5em] at (2, 1.9)  {\small FiDO};
+		\node[rect, fill=tBlue, text width=7em, rounded corners=9pt] at (2, 3.7) {\small FDO};
+		\node[rect, fill=tPink, text width=7em, rounded corners=9pt] at (2, 1)   {\small PDO};
+
+		% \node[anchor=north] at (2, 0.1) {Device node};
+		\draw[decorate, decoration={brace, amplitude=10pt, mirror}] (0.2, 0.1) -- (3.8, 0.1) node[midway, yshift=-18pt] {\small Device node};
+
+		\node[anchor=west] at (4, 6.4) {Upper Filter Driver 3};
+		\node[anchor=west] at (4, 5.5) {Upper Filter Driver 2};
+		\node[anchor=west] at (4, 4.6) {Upper Filter Driver 3};
+		\node[anchor=west] at (4, 3.7) {Function driver};
+		\node[anchor=west] at (4, 2.8) {Lower Filter Driver 2};
+		\node[anchor=west] at (4, 1.9) {Lower Filter Driver 1};
+		\node[anchor=west] at (4, 1)   {Bus driver};
+	\end{tikzpicture}
+	\caption[
+		A device node and its device stack
+	]{
+		A device node and its device stack (modified after \cite{Yosifovich2017}). See \autoref{fig:background.kerneldriver.devicestack} for a concrete example of a device stack.
+	}
+	\label{fig:background.kerneldriver.devnode}
+\end{figure}
+
+As already hinted at in the description of \autoref{fig:background.kerneldriver.devicestack}, the registry is responsible for storing the information that governs driver loading. Both which drivers are loaded and the order they are loaded in are configured this way. Basically, it is described how exactly the device nodes should be built. \autoref{tbl:background.kerneldriver.registrykeys} lists the registry keys that, together with their subkeys, are relevant for the configuration.
+
+\begin{table}[htb!]
+	\center
+	\small
+	\def\arraystretch{1.25}
+	\begin{NiceTabular}{lll}
+	\CodeBefore
+		\rectanglecolor{gray!30}{1-1}{1-3}
+	\Body
+		\hlineB{2}
+		\textbf{Registry Key} & \textbf{Short Name} & \textbf{Description} \\
+		\hlineB{1.5}
+		\texttt{HKLM\textbackslash System\textbackslash CCS\textbackslash Enum}                        & Hardware key & Settings for known hardware devices \\
+		\texttt{HKLM\textbackslash System\textbackslash CCS\textbackslash Control\textbackslash Class} & Class key    & Settings for device types           \\
+		\texttt{HKLM\textbackslash System\textbackslash CCS\textbackslash Services}                    & Software key & Settings for drivers                \\
+		\hlineB{2}
+	\end{NiceTabular}
+	\caption[
+		Important registry keys for driver loading
+	]{
+		Important registry keys for driver loading \cite{Yosifovich2017}. Note that \texttt{CCS} stands for \texttt{CurrentControlSet}.
+	}
+	\label{tbl:background.kerneldriver.registrykeys}
+\end{table}
+
+The keys from \autoref{tbl:background.kerneldriver.registrykeys} each have different roles \cite{Yosifovich2017}:
+\begin{itemize}
+	\item The Hardware key configures driver loading for individual hardware devices. Its subkeys all follow the pattern of \texttt{<Enumerator>\textbackslash <Device ID>\textbackslash <Instance ID>}. The enumerator is the name of the responsible bus driver; the device ID identifies a particular type of hardware, e.g. a specific model from one manufacturer; and the instance ID distinguishes different devices with the same device ID, e.g. the device's location on the bus or its serial number. The most important values for each device are: \texttt{Service}, which contains the name of the device's function driver (this is used as a subkey in the Software key); \texttt{LowerFilters} and \texttt{UpperFilters}, which each contain an ordered list of lower and upper filter driver names, respectively; and \texttt{ClassGUID}, which identifies the device's class (this is used as a subkey in the Class key).
+	\item The Class key contains class GUIDs\footnote{\label{fn:background.kerneldriver.guids} Globally Unique Identifiers, also known as Universally Unique Identifiers (UUIDs). See \href{https://tools.ietf.org/html/rfc4122}{RFC 4122} for more information.} as subkeys. The configuration stored here is similar to the subkeys of the Hardware key, but applies to a whole class of devices. For example, the lower and upper filters listed under the GUID for the ``Volume'' class are loaded for all volumes.
+	\item The Software key contains relevant information about drivers, most importantly the \texttt{ImagePath} value, which stores the path to the driver's \texttt{.sys} file. The subkey that contains the values for a driver is the driver's name.
+\end{itemize}
+
+Examples of subkeys of each of these keys are shown in \autoref{fig:background.kerneldriver.registry}.
+
+\begin{figure}[htb!]
+	\center
+	\todo{Insert screenshots here, use these keys:}
+	\verb|HKLM\SYSTEM\CurrentControlSet\Control\Class\{71a27cdd-812a-11d0-bec7-08002be2092f}|
+	\verb|HKLM\SYSTEM\CurrentControlSet\Enum\STORAGE\Volume\<insert instance id here>|
+	\verb|HKLM\SYSTEM\CurrentControlSet\Services\fvevol|
+	\caption[
+		Example contents of a Hardware, Class, and Software subkey
+	]{
+		Example contents of a Hardware, Class, and Software subkey (Screenshots from the Windows Registry Editor). \todo{bla}
+	}
+	\label{fig:background.kerneldriver.registry}
+\end{figure}
+
+\subsubsection{Important Concepts for Kernel Driver Development}
+\label{chap:background.kerneldriver.concepts}
+The goal of this section is to explain some concepts that are relevant when developing a file system filter driver. They concern memory access, thread contexts, the kernel's I/O system, and communication between kernel and user mode. \todo{may need updating in the future}
+
+\begin{itemize}
+	\item the different contexts driver code can run in (page 82)
+	\item non-pageable paths
+	\item memory
+	\begin{itemize}
+		\item accessing/locking user memory
+		\item MDLs (``a structure that represents information for a buffer in physical memory.'', also page 530)
+		\item non-paged vs paged pool (page 324)
+		\item look-aside lists (page 331)
+	\end{itemize}
+	\item IRPs and other IO stuff, Figure 6-34
+	\item communication between kernel and userspace via ports
+	\item INF files (mention https://docs.microsoft.com/en-us/windows-hardware/drivers/devtest/infverif)?
+	\item DPCs, ALPCs (they're not relevant for our driver, I think)?
+\end{itemize}
+
+\subsubsection{Debugging Kernel Drivers}
+\label{chap:background.kerneldriver.debugging}
+\todo{WinDbg (page 38), screenshots? don't take away content from \ref{chap:ourapproach.final.architecture}}

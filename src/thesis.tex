@@ -19,6 +19,8 @@
 \usepackage{textcomp}
 \usepackage{enumitem}
 \usepackage{mdframed}
+\usepackage{boldline}
+\usepackage{nicematrix}
 \usepackage[section]{placeins} % keep figures in the section, see https://tex.stackexchange.com/a/35130
 \usepackage{scrhack} % this redefines some things, keep this as the last import
 
@@ -52,13 +54,20 @@
 % no sans-serif fonts for (sub)section titles
 \setkomafont{disposition}{\normalfont\bfseries}
 
+% make \autoref{} use "section X" for sub(sub)sections
+\let\subsectionautorefname\sectionautorefname
+\let\subsubsectionautorefname\sectionautorefname
+
+% change default label for first level of itemize
+\setlist[itemize,1]{label=\textbf{--}}
+
 % colours for code listings
 \definecolor{mGreen}{rgb}{0, 0.6, 0}
 \definecolor{mPurple}{rgb}{0.58, 0, 0.82}
 \definecolor{mGray}{rgb}{0.4, 0.4, 0.4}
 \definecolor{background}{rgb}{0.95, 0.95, 0.95}
 
-% colours for table cells
+% colours for table cells (from https://coolors.co/ffadad-ffd6a5-fdffb6-caffbf-9bf6ff-a0c4ff-bdb2ff-ffc6ff-fffffc)
 \definecolor{tPink}{RGB}{255, 173, 173}
 \definecolor{tOrng}{RGB}{255, 214, 165}
 \definecolor{tYlow}{RGB}{253, 255, 182}
@@ -67,9 +76,15 @@
 \definecolor{tBlue}{RGB}{160, 196, 255}
 \definecolor{tPurp}{RGB}{189, 178, 255}
 \definecolor{tRose}{RGB}{255, 198, 255}
+\definecolor{tWhit}{RGB}{255, 255, 252}
 
-% TikZ styles
-% from https://texample.net/tikz/examples/borrowers-and-lenders/
+% for itemized descriptions (modified from https://tex.stackexchange.com/a/266229)
+\newenvironment{descitemize}{\begin{itemize}}{\end{itemize}}
+\expandafter\def\expandafter\descitemize\expandafter{%
+ \descitemize \let\olditem\item
+  \def\item[##1]{\olditem \textbf{##1} \hspace{0.2em}}}
+
+% TikZ styles (from https://texample.net/tikz/examples/borrowers-and-lenders)
 \tikzset{
 	% Define standard arrow tip
 	>=stealth',
@@ -77,13 +92,24 @@
 	rect/.style={
 		rectangle,
 		draw=black,
-		minimum height=1.75em,
+		minimum height=1.6em,
 		text centered
 	},
 	arrow/.style={
 		->,
 	}
 }
+% from https://tex.stackexchange.com/a/87993
+\makeatletter
+\tikzset{
+    from/.style args={#1 to #2}{% without transformations
+        above right={0cm of #1},% needs positioning library
+        /utils/exec=\pgfpointdiff
+            {\tikz@scan@one@point\pgfutil@firstofone(#1)\relax}
+            {\tikz@scan@one@point\pgfutil@firstofone(#2)\relax},
+        minimum width/.expanded=\the\pgf@x,
+        minimum height/.expanded=\the\pgf@y}}
+\makeatother
 
 % command for text with a tight color box behind it
 % the `\strut` makes the colorbox always full height, regardless of the height of the text inside it
