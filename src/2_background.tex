@@ -594,14 +594,21 @@ Examples of subkeys of each of these keys are shown in \autoref{fig:background.k
 The goal of this section is to explain some concepts that are relevant when developing a file system filter driver. They concern memory access, thread contexts, the kernel's I/O system, and communication between kernel and user mode. \todo{may need updating in the future}
 
 \begin{itemize}
-	\item locking user memory, MDLs
-	\item IRPs and other IO stuff, Figure 6-34
 	\item the different contexts driver code can run in (page 82)
 	\item non-pageable paths
-	\item DPCs, ALPCs (they're not relevant for our driver, I think)?
+	\item memory
+	\begin{itemize}
+		\item accessing/locking user memory
+		\item MDLs (``a structure that represents information for a buffer in physical memory.'', also page 530)
+		\item non-paged vs paged pool (page 324)
+		\item look-aside lists (page 331)
+	\end{itemize}
+	\item IRPs and other IO stuff, Figure 6-34
 	\item communication between kernel and userspace via ports
+	\item INF files (mention https://docs.microsoft.com/en-us/windows-hardware/drivers/devtest/infverif)?
+	\item DPCs, ALPCs (they're not relevant for our driver, I think)?
 \end{itemize}
 
 \subsubsection{Debugging Kernel Drivers}
 \label{chap:background.kerneldriver.debugging}
-\todo{WinDbg (or in a later (sub)section) (page 38)}
+\todo{WinDbg (page 38), screenshots? don't take away content from \ref{chap:ourapproach.final.architecture}}
