@@ -33,7 +33,7 @@ Our library does provide access to the raw decrypted user data, but the practica
 		\node [anchor=center] at (10.25, 1.5) {\footnotesize\makecell{alignment\\padding}};
 		\draw [fill={rgb:black, 1; white, 2}] (10, 0) rectangle (10.5, 1);
 
-		\draw[decorate, decoration={brace, amplitude=10pt, mirror}, yshift=-3pt] (0, 0) -- (10.5, 0) node[midway, yshift=-18pt] {\small Complete header};
+		\draw[decorate, decoration={calligraphic brace, amplitude=10pt, mirror}, semithick, yshift=-3pt] (0, 0) -- (10.5, 0) node[midway, yshift=-18pt] {\small Complete header};
 
 		\draw [fill=white] (10.5, 0) rectangle (15, 1);
 		\node [anchor=center] at (12.75, 0.5) {\small\makecell{Segment(s)}};
@@ -491,13 +491,13 @@ In this model, the control over a device is not concentrated at one single drive
 	\caption[
 		Example of a device stack for a storage volume
 	]{
-		Example of a device stack for a storage volume (Screenshot from device properties in Windows Device Manager). \todo{Re-take screenshot on a 4K display} The official descriptions of the drivers listed in this example are, from top to bottom: ``Volume Shadow Copy driver'', ``Volume driver'', ``I/O rate control filter'', ``BitLocker Drive Encryption Driver'', and ``Volume Manager Driver''. As can be seen under the appropriate registry key\footnotemark, \texttt{fvevol} and \texttt{iorate} are lower filter drivers and \texttt{volsnap} is an upper filter driver. This leaves \texttt{volume} as the function driver and \texttt{volmgr} as the bus driver.
+		Example of a device stack for a storage volume (Screenshot from device properties in Windows Device Manager). The official descriptions of the drivers listed in this example are, from top to bottom: ``Volume Shadow Copy driver'', ``Volume driver'', ``I/O rate control filter'', ``BitLocker Drive Encryption Driver'', and ``Volume Manager Driver''. As can be seen under the appropriate registry key\footnotemark, \texttt{fvevol} and \texttt{iorate} are lower filter drivers and \texttt{volsnap} is an upper filter driver. This leaves \texttt{volume} as the function driver and \texttt{volmgr} as the bus driver.
 	}
 	\label{fig:background.kerneldriver.devicestack}
 \end{figure}
-\footnotetext{\label{fn:background.kerneldriver.registryvolume} \texttt{HKLM\textbackslash SYSTEM\textbackslash CCS\textbackslash Control\textbackslash Class\textbackslash {71a27cdd-812a-11d0-bec7-08002be2092f}}, where \texttt{CCS} stands for \texttt{CurrentControlSet}. Later on in this section we will talk about the registry's role in driver management in more detail. \todo{ensure correct position}}
+\footnotetext{\label{fn:background.kerneldriver.registryvolume} Later on in this section we will talk about the registry's role in driver management in more detail. See \autoref{fig:background.kerneldriver.registry} for what key to use and how the values stored under that key may look. \todo{ensure correct position}}
 
-The device stack is built by the PnP manager during a process called \emph{device enumeration}. This happens at system boot or when resuming from hibernation, but it can also be triggered manually. During enumeration, the PnP manager constructs a so-called \emph{device tree} that captures the parent-child relationships of devices. A node in this tree represents a physical device and is appropriately called a \emph{device node}, or short \emph{devnode}. When a new device is discovered, its required drivers are loaded (if they have not already been loaded). The drivers are then informed about the new device \cite{Yosifovich2017}.
+The device stack is built by the PnP manager during a process called \emph{device enumeration}. This happens at system boot or when resuming from hibernation, but it can also be triggered manually. During enumeration, the PnP manager constructs a so-called \emph{device tree} that captures the parent-child relationships of devices. A node in this tree represents a physical device and is appropriately called a \emph{device node}, or short \emph{devnode}. When a new device is discovered, its required drivers are loaded (if they have not already been loaded). The drivers are then informed about the new device, and can decide whether they want to be part of the device stack or not \cite{Yosifovich2017}.
 
 For all the drivers of a device, the PnP manager creates objects that are used for managing and representing the relationships between the drivers. These objects form the device stack. They are also a form of device object, however they don't represent a real, physical device, but rather a virtual one. See \autoref{fig:background.kerneldriver.devnode} for an example device node and the objects it is made of. There are the following types of objects in a device node, ordered from bottom to top by their occurrence in a devnode \cite{Yosifovich2017}:
 \begin{itemize}
@@ -522,7 +522,7 @@ This shows that filter drivers can be places either above the function driver (u
 		\node[rect, fill=tPink, text width=7em, rounded corners=9pt] at (2, 1)   {\small PDO};
 
 		% \node[anchor=north] at (2, 0.1) {Device node};
-		\draw[decorate, decoration={brace, amplitude=10pt, mirror}] (0.2, 0.1) -- (3.8, 0.1) node[midway, yshift=-18pt] {\small Device node};
+		\draw[decorate, decoration={calligraphic brace, amplitude=10pt, mirror}, semithick] (0.2, 0.1) -- (3.8, 0.1) node[midway, yshift=-18pt] {\small Device node};
 
 		\node[anchor=west] at (4, 6.4) {Upper Filter Driver 3};
 		\node[anchor=west] at (4, 5.5) {Upper Filter Driver 2};
@@ -577,35 +577,225 @@ Examples of subkeys of each of these keys are shown in \autoref{fig:background.k
 
 \begin{figure}[htb!]
 	\center
-	\todo{Insert screenshots here, use these keys:}
-	\verb|HKLM\SYSTEM\CurrentControlSet\Control\Class\{71a27cdd-812a-11d0-bec7-08002be2092f}|
-	\verb|HKLM\SYSTEM\CurrentControlSet\Enum\STORAGE\Volume\<insert instance id here>|
-	\verb|HKLM\SYSTEM\CurrentControlSet\Services\fvevol|
+	
+	\includegraphics[scale=0.65]{../img/background.kerneldriver.registry.png}
 	\caption[
 		Example contents of a Hardware, Class, and Software subkey
 	]{
-		Example contents of a Hardware, Class, and Software subkey (Screenshots from the Windows Registry Editor). \todo{bla}
+		Example contents of a Hardware, Class, and Software subkey (Screenshots from the Windows Registry Editor). These are all relevant for the device whose device stack is shown in \autoref{fig:background.kerneldriver.devicestack}. As already partly discussed there, the configured values match the final device stack: the \texttt{Service} value under the Hardware subkey designates \texttt{volume} as the function driver; the drivers listed in the \texttt{LowerFilters} and \texttt{UpperFilters} values of the Class subkey are indeed loaded before or after \texttt{volume}, respectively (also note that they are loaded, from bottom to top, in the order listed; the \texttt{readyboost} driver does not appear in the device stack because it probably decided not to be part of it\footnotemark); the \texttt{ImagePath} under the Software subkey shows the path to one of the driver's \texttt{.sys} file.
 	}
 	\label{fig:background.kerneldriver.registry}
 \end{figure}
+\footnotetext{\label{fn:background.kerneldriver.rdyboost} Which makes sense, because it is responsible for the ReadyBoost technology, which is designed for SD cards and USB sticks, and not hard disk volumes. \todo{ensure correct position}}
 
 \subsubsection{Important Concepts for Kernel Driver Development}
 \label{chap:background.kerneldriver.concepts}
 The goal of this section is to explain some concepts that are relevant when developing a file system filter driver. They concern memory access, thread contexts, the kernel's I/O system, and communication between kernel and user mode. \todo{may need updating in the future}
 
+The code of a driver can run in different thread contexts, depending on how it was called. This is mostly relevant for accessing memory, because the translation of virtual memory addresses into physical addresses depends on the thread context. We will discuss what exactly to keep in mind when accessing memory shortly. The three different contexts that driver code can run in are the following \cite{Yosifovich2017}:
 \begin{itemize}
-	\item the different contexts driver code can run in (page 82)
-	\item non-pageable paths
-	\item memory
-	\begin{itemize}
-		\item accessing/locking user memory
-		\item MDLs (``a structure that represents information for a buffer in physical memory.'', also page 530)
-		\item non-paged vs paged pool (page 324)
-		\item look-aside lists (page 331)
-	\end{itemize}
-	\item IRPs and other IO stuff, Figure 6-34
+	\item when called to handle an I/O request initiated by a user thread, the driver code runs in this thread's context;
+	\item when called by a OS component, e.g. the PnP manager, the driver code runs in the context of the calling system thread;
+	\item when called via an interrupt, it is not possible to predict in which context the driver code will run. The context of whatever thread was currently executing when the interrupt arrived will be used. The interrupt may stem from hardware, for example when a device informs about available data, or from software, for example when a timer fires.
+\end{itemize}
+Note that, regardless of the context, the code always executes in kernel mode. When running in the context of a user mode thread, the CPU switches to kernel mode before running the driver code \cite{Yosifovich2017}.
+
+Another important parameter of code execution is the so-called \emph{interrupt request level (IRQL)}. As the name suggests, this has something to do with interrupts, but for this thesis it suffices to talk about one important property of this numerical value: code running at a lower IRQL cannot interrupt code running at a higher IRQL. We will discuss the implications of this in a moment. The normal IRQL of the CPU is 0, also called \texttt{PASSIVE\_LEVEL}. This is also the only possible value when in user mode. Another possible value for kernel mode code, more or less the only other one non-device drivers (such as filter drivers) will come in contact with, is an IRQL of 2. This is known as \texttt{DISPATCH\_LEVEL}. We will present a concrete example of code that can run at \texttt{DISPATCH\_LEVEL} when talking about the I/O system. The important thing is that the kernel's thread scheduler runs at this IRQL. Because of the property mentioned earlier, this means that the scheduler cannot interrupt code running at \texttt{DISPATCH\_LEVEL}. The immediate consequences of this are \cite{Yosifovich2017}:
+\begin{itemize}
+	\item Synchronization objects that rely on the scheduler's support, such as semaphores or mutexes, no longer work. The problem is that when waiting on one of these objects, the thread goes to sleep. But the scheduler can't run, because that would mean interrupting the thread, and thus it can never wake up the thread again. Windows prevents this by checking the IRQL and crashing if the current IRQL has a value of 2.
+	\item Page faults must not occur. Handling them requires a context switch, but for that the scheduler would need to work. Therefore, code at \texttt{DISPATCH\_LEVEL} can only access memory that is not currently paged to disk. This can be ensured by allocating the memory in a special pool which, by definition, always is resident in memory: the \emph{non-paged pool}\footnote{\label{fn:background.kerneldriver.pagedpool} There also exists an allocation pool without this special guarantee, called the \emph{paged pool}.}.
+\end{itemize}
+In general, when running at an IRQL of 2, every called function needs to be checked for the ability to be called at this level. The supported IRQL is documented for all WDK functions.
+
+As mentioned before, access to memory in userspace generally requires special care. To be precise, the following problems can occur \cite{Yosifovich2017}:
+\begin{itemize}
+	\item Recall that the translation of user mode virtual addresses to physical addresses depends on the thread context. Referencing an address from a different context than it belongs to either leads to an access violation or accesses random data from another process.
+	\item Userspace memory always has the risk of being paged out. Code running at an IRQL of 2 must ensure that this is not the case before accessing memory. As discussed before, page faults are illegal in this state.
+\end{itemize}
+
+One situation where a driver needs to access user memory is doing I/O, particularly read or write operations. Because these are so common, the I/O manager presents a solution, namely the \emph{Buffered I/O} and the \emph{Direct I/O} modes \cite{Yosifovich2017}:
+\begin{descitemize}
+	\item[Buffered I/O] \todo{bla}
+	\item[Direct I/O] \todo{MDLs (``a structure that represents information for a buffer in physical memory'', also page 530)}
+\end{descitemize}
+
+\begin{figure}[htb!]
+	\center
+	\begin{tikzpicture}
+		% PART 1
+		\node[rectangle, fill=tBlue, from={0, 9 to 2.5, 10}] {\footnotesize User Buffer};
+		\draw (0, 8) rectangle (2.5, 14);
+		\draw (0, 11) -- (2.5, 11);
+		\draw (0, 10) -- (2.5, 10);
+		\draw (0, 9)  -- (2.5, 9);
+		\node[anchor=north] at (1.25, 14) {\footnotesize Kernel Space};
+		\node[anchor=south] at (1.25, 8)  {\footnotesize User Space};
+
+		\draw[decorate, decoration={calligraphic brace, amplitude=5pt}, semithick] (-0.1, 9) -- (-0.1, 10) node[midway, anchor=east, xshift=-5pt] {\footnotesize $N$ bytes};
+
+		\node[circ=1.2em] at (-1.5, 7.2) {\small 1};
+		\node[anchor=west, align=left] at (-1.2, 7.2) {User client allocates buffer\\and invokes read operation};
+
+		% PART 2
+		\node[rectangle, fill=tOrng, from={7, 12 to 9.5, 13}] {\footnotesize Kernel Buffer};
+		\node[rectangle, fill=tBlue, from={7, 9 to 9.5, 10}]  {\footnotesize User Buffer};
+		\draw (7, 8) rectangle (9.5, 14);
+		\draw (7, 11) -- (9.5, 11);
+		\draw (7, 10) -- (9.5, 10);
+		\draw (7, 9)  -- (9.5, 9);
+		\draw (7, 12) -- (9.5, 12);
+		\draw (7, 13) -- (9.5, 13);
+		\node[anchor=north] at (8.25, 14) {\footnotesize Kernel Space};
+		\node[anchor=south] at (8.25, 8)  {\footnotesize User Space};
+
+		\draw[decorate, decoration={calligraphic brace, amplitude=5pt}, semithick] (6.9, 12) -- (6.9, 13) node[midway, anchor=east, xshift=-5pt] {\footnotesize $N$ bytes};
+		\draw[decorate, decoration={calligraphic brace, amplitude=5pt}, semithick] (6.9, 9)  -- (6.9, 10) node[midway, anchor=east, xshift=-5pt] {\footnotesize $N$ bytes};
+
+		\node[rectangle, fill=tGren, from={10.5, 10.5 to 13, 11.5}] {};
+		\draw (10.5, 9.5) rectangle (13, 12.5);
+		\node[anchor=north] at (11.75, 12.5) {\footnotesize RAM};
+		\draw (10.5, 10.5) -- (13, 10.5);
+		\draw (10.5, 11.5) -- (13, 11.5);
+		\draw (9.5, 12) -- (10.5, 10.5);
+		\draw (9.5, 13) -- (10.5, 11.5);
+
+		\node[circ=1.2em] at (5.7, 7.2) {\small 2};
+		\node[anchor=west, align=left] at (6.0, 7.2) {I/O manager allocates\\buffer in non-paged pool};
+
+		% PART 3
+		\node[rectangle, fill=tPink, from={0, 4 to 2.5, 5}] {\footnotesize Data};
+		\node[rectangle, fill=tBlue, from={0, 1 to 2.5, 2}] {\footnotesize User Buffer};
+		\draw (0, 0) rectangle (2.5, 6);
+		\draw (0, 3) -- (2.5, 3);
+		\draw (0, 4) -- (2.5, 4);
+		\draw (0, 5) -- (2.5, 5);
+		\draw (0, 1) -- (2.5, 1);
+		\draw (0, 2) -- (2.5, 2);
+		\node[anchor=north] at (1.25, 6) {\footnotesize Kernel Space};
+		\node[anchor=south] at (1.25, 0) {\footnotesize User Space};
+
+		\node[rectangle, fill=tPink, from={3.5, 2.5 to 6, 3.5}] {\footnotesize Data};
+		\draw (3.5, 1.5) rectangle (6, 4.5);
+		\node[anchor=north] at (4.75, 4.5) {\footnotesize RAM};
+		\draw (3.5, 2.5) -- (6, 2.5);
+		\draw (3.5, 3.5) -- (6, 3.5);
+		\draw (2.5, 4) -- (3.5, 2.5);
+		\draw (2.5, 5) -- (3.5, 3.5);
+
+		\node[circ=1.2em] at (-0.85, -0.8) {\small 3};
+		\node[anchor=west, align=left] at (-0.55, -0.8) {Driver writes data\\to kernel buffer};
+
+		% PART 4
+		\node[rectangle, fill=tPink, from={7, 4 to 9.5, 5}] {\footnotesize Data};
+		\node[rectangle, fill=tPink, from={7, 1 to 9.5, 2}] {\footnotesize Data};
+		\draw (7, 0) rectangle (9.5, 6);
+		\draw (7, 3) -- (9.5, 3);
+		\draw (7, 4) -- (9.5, 4);
+		\draw (7, 5) -- (9.5, 5);
+		\draw (7, 1) -- (9.5, 1);
+		\draw (7, 2) -- (9.5, 2);
+		\node[anchor=north] at (8.25, 6) {\footnotesize Kernel Space};
+		\node[anchor=south] at (8.25, 0) {\footnotesize User Space};
+
+		\draw[arrow] (9.5, 4.5) to [bend left=45] (9.5, 1.5);
+		\node[anchor=west] at (10.15, 3) {\footnotesize Copy}; % node[midway] in a \draw with bend doesn't work
+
+		\node[circ=1.2em] at (5.05, -0.8) {\small 4};
+		\node[anchor=west, align=left] at (5.35, -0.8) {I/O manager copies data to user\\buffer and frees kernel buffer};
+	\end{tikzpicture}
+	\caption[
+		Buffered I/O for a read operation
+	]{
+		Buffered I/O for a read operation (modified after \cite{Yosifovich2017}). \todo{todo}
+	}
+	\label{fig:background.kerneldriver.bufferedio}
+\end{figure}
+
+\begin{figure}[htb!]
+	\center
+	\begin{tikzpicture}
+		% PART 1
+		\node[rectangle, fill=tBlue, from={0, 9 to 2.5, 10}] {\footnotesize User Buffer};
+		\draw (0, 8) rectangle (2.5, 14);
+		\draw (0, 11) -- (2.5, 11);
+		\draw (0, 10) -- (2.5, 10);
+		\draw (0, 9)  -- (2.5, 9);
+		\node[anchor=north] at (1.25, 14) {\footnotesize Kernel Space};
+		\node[anchor=south] at (1.25, 8)  {\footnotesize User Space};
+
+		\draw[decorate, decoration={calligraphic brace, amplitude=5pt}, semithick] (-0.1, 9) -- (-0.1, 10) node[midway, anchor=east, xshift=-5pt] {\footnotesize $N$ bytes};
+
+		\node[circ=1.2em] at (-1.9, 7.2) {\small 1};
+		\node[anchor=west, align=left] at (-1.6, 7.2) {User client allocates buffer and\\invokes read or write operation};
+
+		% PART 2
+		\node[rectangle, fill=tOrng, from={7, 12 to 9.5, 13}] {};
+		\node[rectangle, fill=tBlue, from={7, 9 to 9.5, 10}]  {\footnotesize User Buffer};
+		\draw (7, 8) rectangle (9.5, 14);
+		\draw (7, 11) -- (9.5, 11);
+		\draw (7, 10) -- (9.5, 10);
+		\draw (7, 9)  -- (9.5, 9);
+		\draw (7, 12) -- (9.5, 12);
+		\draw (7, 13) -- (9.5, 13);
+		\node[anchor=north] at (8.25, 14) {\footnotesize Kernel Space};
+		\node[anchor=south] at (8.25, 8)  {\footnotesize User Space};
+
+		\draw[decorate, decoration={calligraphic brace, amplitude=5pt}, semithick] (6.9, 12) -- (6.9, 13) node[midway, anchor=east, xshift=-5pt] {\footnotesize $N$ bytes};
+		\draw[decorate, decoration={calligraphic brace, amplitude=5pt}, semithick] (6.9, 9) -- (6.9, 10) node[midway, anchor=east, xshift=-5pt] {\footnotesize $N$ bytes};
+
+		\node[rectangle, fill=tGren, from={10.5, 10.5 to 13, 11.5}] {};
+		\draw (10.5, 9.5) rectangle (13, 12.5);
+		\node[anchor=north] at (11.75, 12.5) {\footnotesize RAM};
+		\draw (10.5, 10.5) -- (13, 10.5);
+		\draw (10.5, 11.5) -- (13, 11.5);
+		\draw (9.5, 12) -- (10.5, 10.5);
+		\draw (9.5, 13) -- (10.5, 11.5);
+		\draw (9.5, 9)  -- (10.5, 10.5);
+		\draw (9.5, 10) -- (10.5, 11.5);
+
+		\node[circ=1.2em] at (4.9, 7.2) {\small 2};
+		\node[anchor=west, align=left] at (5.2, 7.2) {I/O manager locks buffer in RAM\\and maps it to system space};
+
+		% PART 3
+		\node[rectangle, fill=tPink, from={0, 4 to 2.5, 5}] {\footnotesize Data};
+		\node[rectangle, fill=tPink, from={0, 1 to 2.5, 2}] {\footnotesize Data};
+		\draw (0, 0) rectangle (2.5, 6);
+		\draw (0, 4) -- (2.5, 4);
+		\draw (0, 5) -- (2.5, 5);
+		\draw (0, 1) -- (2.5, 1);
+		\draw (0, 2) -- (2.5, 2);
+		\draw (0, 3) -- (2.5, 3);
+		\node[anchor=north] at (1.25, 6) {\footnotesize Kernel Space};
+		\node[anchor=south] at (1.25, 0) {\footnotesize User Space};
+
+		\node[rectangle, fill=tPink, from={3.5, 2.5 to 6, 3.5}] {\footnotesize Data};
+		\draw (3.5, 1.5) rectangle (6, 4.5);
+		\node[anchor=north] at (4.75, 4.5) {\footnotesize RAM};
+		\draw (3.5, 2.5) -- (6, 2.5);
+		\draw (3.5, 3.5) -- (6, 3.5);
+		\draw (2.5, 4) -- (3.5, 2.5);
+		\draw (2.5, 5) -- (3.5, 3.5);
+		\draw (2.5, 1) -- (3.5, 2.5);
+		\draw (2.5, 2) -- (3.5, 3.5);
+
+		\node[circ=1.2em] at (-2.2, -0.8) {\small 3};
+		\node[anchor=west, align=left] at (-1.9, -0.8) {Driver reads/writes from/to buffer\\using the system space address};
+	\end{tikzpicture}
+	\caption[
+		Direct I/O
+	]{
+		Direct I/O (modified after \cite{Yosifovich2017}). \todo{todo}
+	}
+	\label{fig:background.kerneldriver.directio}
+\end{figure}
+
+\todo{write about:}
+\begin{itemize}
+	\item figure 6-14?
+	\item look-aside lists (page 331)
+	\item IRPs (page 485, 513) and other IO stuff (page 485), Figure 6-13
 	\item communication between kernel and userspace via ports
-	\item INF files (mention https://docs.microsoft.com/en-us/windows-hardware/drivers/devtest/infverif)?
+	\item INF files (page 485) (mention https://docs.microsoft.com/en-us/windows-hardware/drivers/devtest/infverif)?
 	\item DPCs, ALPCs (they're not relevant for our driver, I think)?
 \end{itemize}
 

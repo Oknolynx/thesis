@@ -25,7 +25,7 @@
 \usepackage{scrhack} % this redefines some things, keep this as the last import
 
 % for drawing braces
-\usetikzlibrary{decorations.pathreplacing}
+\usetikzlibrary{decorations.pathreplacing, calligraphy}
 % for graphs
 \usetikzlibrary{arrows, positioning}
 
@@ -95,6 +95,17 @@
 		minimum height=1.6em,
 		text centered
 	},
+	% circular box
+	circ/.style={
+		circle,
+		draw=black,
+		text centered,
+		minimum size=#1,
+		inner sep=0pt,
+		outer sep=0pt
+	},
+	% diameter size
+	circ/.default = 1em,
 	arrow/.style={
 		->,
 	}
