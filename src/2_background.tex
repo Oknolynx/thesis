@@ -613,10 +613,10 @@ As mentioned before, access to memory in userspace generally requires special ca
 	\item Userspace memory always has the risk of being paged out. Code running at an IRQL of 2 must ensure that this is not the case before accessing memory. As discussed before, page faults are illegal in this state.
 \end{itemize}
 
-One situation where a driver needs to access user memory is doing I/O, particularly read or write operations. Because these are so common, the I/O manager presents a solution, namely the \emph{Buffered I/O} and the \emph{Direct I/O} modes \cite{Yosifovich2017}:
+One situation where a driver needs to access user memory is doing I/O, i.e. read or write operations. Because these are so common, the I/O manager presents a solution, namely the \emph{Buffered I/O} and the \emph{Direct I/O} modes \cite{Yosifovich2017}:
 \begin{descitemize}
-	\item[Buffered I/O] \todo{bla}
-	\item[Direct I/O] \todo{MDLs (``a structure that represents information for a buffer in physical memory'', also page 530)}
+	\item[Buffered I/O] When using this mode, the I/O manager copies the data from the user buffer to a newly allocated kernel buffer from the non-paged pool (or vice versa, depending on whether it is a read or write operation). This means the driver does not have to care about accessing the user buffer at all and can just work with the kernel buffer. Because it was allocated from non-paged pool, no page fault can occur, and as a system space address, the kernel buffer address is valid in any thread context. See \autoref{fig:background.kerneldriver.bufferedio} for how this works when reading data. Buffered I/O is commonly used for small buffers (up to one page, or 4KB).
+	\item[Direct I/O] In this mode, the I/O manager locks the user buffer in RAM, so that it cannot be paged out to disk. The driver can then create a mapping of the buffer in kernel memory and just use that, without any copying. To do so, the I/O manager provides the driver with a MDL, which stands for \emph{memory descriptor list}. It holds information about the physical memory occupied by the user buffer, and it is needed to map the buffer into system space. At this point, the buffer's physical memory is mapped twice: once into user memory, and once into kernel memory. Both mappings can be accessed at any IRQL, because the buffer cannot be paged out. However, while the user mapping is only valid in one thread context, the kernel mapping is always valid. After the operation has completed, the I/O manager removes the kernel mapping and unlocks the buffer. \autoref{fig:background.kerneldriver.directio} illustrates this process. Direct I/O is useful when using large buffers (larger than one page, or 4KB), because no copying is needed\footnote{\label{fn:background.kerneldriver.dma} It is also more suitable than buffered I/O for devices with direct memory access (DMA), ``because DMA is used to transfer data from a device to RAM or vice versa without CPU intervention -- but with buffered I/O, there is always copying done with the CPU, which makes DMA pointless.'' \cite{Yosifovich2017}}.
 \end{descitemize}
 
 \begin{figure}[htb!]
@@ -706,7 +706,7 @@ One situation where a driver needs to access user memory is doing I/O, particula
 	\caption[
 		Buffered I/O for a read operation
 	]{
-		Buffered I/O for a read operation (modified after \cite{Yosifovich2017}). \todo{todo}
+		Buffered I/O for a read operation (modified after \cite{Yosifovich2017}). For write operations, the copying is done before the driver is called to handle the request.
 	}
 	\label{fig:background.kerneldriver.bufferedio}
 \end{figure}
@@ -782,21 +782,28 @@ One situation where a driver needs to access user memory is doing I/O, particula
 		\node[anchor=west, align=left] at (-1.9, -0.8) {Driver reads/writes from/to buffer\\using the system space address};
 	\end{tikzpicture}
 	\caption[
-		Direct I/O
+		Direct I/O for a read or write operation
 	]{
-		Direct I/O (modified after \cite{Yosifovich2017}). \todo{todo}
+		Direct I/O for a read or write operation (modified after \cite{Yosifovich2017}).
 	}
 	\label{fig:background.kerneldriver.directio}
 \end{figure}
 
+It is up to the driver to decide which I/O mode to use. Their choice is signalled to the I/O manager using a flag of their virtual device's object (the one that is part of the device node). This applies to all I/O operations, the exception being so-called \emph{device I/O control requests}. These are the Windows equivalent to Unix' \texttt{ioctl} syscall and are used to communicate with a device from user mode\footnote{\label{fn:background.kerneldriver.ioctls} An example is \texttt{IOCTL\_DISK\_GET\_DRIVE\_GEOMETRY}, which is used get the physical layout of a disk. See \url{www.ioctls.net} for a comprehensive (unofficial) list of almost all relevant control codes and the \href{https://docs.microsoft.com/en-us/windows/win32/api/ioapiset/nf-ioapiset-deviceiocontrol}{documentation for \texttt{DeviceIoControl}} for information on how to use them.}. A device control code, specifying what exactly the user wants from the device, also defines the used I/O mode, and drivers must adhere to this \cite{Yosifovich2017}.
+
+In situations where it is not too complicated, drivers can choose to handle the user buffer access completely by themselves. This mode is known as \emph{Neither I/O}. It has the advantage of zero overhead, because the I/O manager does no extra work. It does however increase the risk of bugs and possible security risks. See \cite{Yosifovich2017} for more information.
+
 \todo{write about:}
 \begin{itemize}
 	\item figure 6-14?
-	\item look-aside lists (page 331)
 	\item IRPs (page 485, 513) and other IO stuff (page 485), Figure 6-13
 	\item communication between kernel and userspace via ports
+\end{itemize}
+
+\todo{explain ``by the way'' when talking about \texttt{luks2flt}?}
+\begin{itemize}
 	\item INF files (page 485) (mention https://docs.microsoft.com/en-us/windows-hardware/drivers/devtest/infverif)?
-	\item DPCs, ALPCs (they're not relevant for our driver, I think)?
+	\item look-aside lists (page 331)
 \end{itemize}
 
 \subsubsection{Debugging Kernel Drivers}
