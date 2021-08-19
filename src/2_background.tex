@@ -512,7 +512,7 @@ This shows that filter drivers can be places either above the function driver (u
 \begin{figure}[htb!]
 	\center
 	\begin{tikzpicture}
-		\node[rect, fill=tYlow, from={0.2, 0.3 to 3.8, 7.1}] {\small Device node};
+		\node[rect, fill=tYlow, from={0.2, 0.3 to 3.8, 7.1}] {};
 		\node[rect, fill=tLblu, text width=5em] at (2, 6.4)  {\small FiDO};
 		\node[rect, fill=tLblu, text width=5em] at (2, 5.5)  {\small FiDO};
 		\node[rect, fill=tLblu, text width=5em] at (2, 4.6)  {\small FiDO};
@@ -521,7 +521,6 @@ This shows that filter drivers can be places either above the function driver (u
 		\node[rect, fill=tBlue, text width=7em, rounded corners=9pt] at (2, 3.7) {\small FDO};
 		\node[rect, fill=tPink, text width=7em, rounded corners=9pt] at (2, 1)   {\small PDO};
 
-		% \node[anchor=north] at (2, 0.1) {Device node};
 		\draw[decorate, decoration={calligraphic brace, amplitude=10pt, mirror}, semithick] (0.2, 0.1) -- (3.8, 0.1) node[midway, yshift=-18pt] {\small Device node};
 
 		\node[anchor=west] at (4, 6.4) {Upper Filter Driver 3};
@@ -795,7 +794,7 @@ In situations where it is not too complicated, drivers can choose to handle the 
 
 I/O operations have been mentioned a lot in this section. In the following paragraphs, the important details of the kernel's I/O system will be laid out.
 
-Windows' internal I/O system is packet-driven. Almost all I/O requests\footnote{\label{fn:background.kerneldriver.fastio} The exception is so-called \emph{Fast I/O}, which works differently \cite{Yosifovich2017}. It is not supported by our driver and will therefore not be covered.} travel through the different relevant parts of the system in the form of an \emph{I/O request packet (IRP)}, which contains all relevant information about the request. IRPs are allocated in non-paged pool, usually by the I/O manager, but it is also possible for drivers to initiate I/O by creating an IRP. After an IRP's allocation and initialization, a pointer to it is passed to the driver that shall handle the request. The driver then performs its operation and returns the IRP to the I/O manager. It also reports whether it was able to complete the requested operation or whether further work by another driver needs to be done \cite{Yosifovich2017}.
+Windows' internal I/O system is packet-driven. Almost all I/O requests\footnote{\label{fn:background.kerneldriver.fastio} The exception is so-called \emph{Fast I/O}, which works differently \cite{Yosifovich2017}. It is not supported by our driver and will therefore not be covered.} travel through the different relevant parts of the system in the form of an \emph{I/O request packet (IRP)}, which contains all relevant information about the request. IRPs are allocated in non-paged pool, usually by the I/O manager\footnote{\label{fn:background.kerneldriver.irpallocation} The PnP or power manager also sometimes allocate IRPs \cite{Yosifovich2017}. For simplicity, we will write ``the I/O manager'' instead of ``the I/O, PnP, or power manager'' in the following paragraphs.}, but it is also possible for drivers to initiate I/O by creating an IRP. After an IRP's allocation and initialization, a pointer to it is passed to the driver that shall handle the request. The driver then performs its operation and returns the IRP to the I/O manager. It also reports whether it was able to complete the requested operation or whether further work by another driver needs to be done \cite{Yosifovich2017}.
 
 An IRP holds a lot of information. For this thesis, it suffices to know about the following fields\footnote{\label{fn:background.kerneldriver.irp} See \cite{Yosifovich2017} and \href{https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_irp}{its documentation in the WDK} for more details.} \cite{Yosifovich2017}:
 \begin{itemize}
@@ -805,24 +804,19 @@ An IRP holds a lot of information. For this thesis, it suffices to know about th
 	\item information about the IRP's stack locations, which will be explained momentarily.
 \end{itemize}
 
-In memory, the IRP is followed by one or more \emph{stack locations}, their count matching the number of drivers this IRP will pass through\footnote{\label{fn:background.kerneldriver.adjuststacksize} This value is known when allocating the IRP, because it is equal to the size of the device stack. In some scenarios, most of which involve the filter manager, an IRP might be sent over to a new device stack. This might necessitate readjusting the count of stack locations, if the new device stack has a different size than the one before \cite{Yosifovich2017}. We will discuss the filter manager in \autoref{chap:ourapproach.failed}.}. These stack locations contain \todo{todo}.
-
-\todo{I/O manager only initializes first stack location, each driver responsible for next location:}\\
-\todo{copy current to next stack, skip current; completion routines}
-
-\todo{all io is done on virtual files (page 486, 487)}
+In memory, the IRP is followed by one or more \emph{stack locations}, their count matching the number of drivers this IRP will pass through\footnote{\label{fn:background.kerneldriver.adjuststacksize} This value is known when allocating the IRP, because it is equal to the size of the device stack. In some scenarios, most of which involve the filter manager, an IRP might be sent over to a new device stack. This might necessitate readjusting the count of stack locations, if the new device stack has a different size than the one before \cite{Yosifovich2017}. We will discuss the filter manager in \autoref{chap:ourapproach.failed}.} \cite{Yosifovich2017}. These stack locations are represented by \texttt{IO\_STACK\_LOCATION} structures, whose layout is shown in \autoref{fig:background.kerneldriver.stacklocation}.
 
 \begin{figure}[htb!]
 	\center
 	\small
 	\begin{tikzpicture}
-		\node[rectangle, fill=tPink,   from={0, 8 to 3, 9}] {\makecell{Major Function}};
-		\node[rectangle, fill=tPink,   from={3, 8 to 6, 9}] {\makecell{Minor Function}};
+		\node[rectangle, fill=tPink,   from={0, 8 to 3, 9}] {\makecell{MajorFunction}};
+		\node[rectangle, fill=tPink,   from={3, 8 to 6, 9}] {\makecell{MinorFunction}};
 		\node[rectangle, fill=gray!30, from={0, 7 to 3, 8}] {\makecell{Flags}};
 		\node[rectangle, fill=gray!30, from={3, 7 to 6, 8}] {\makecell{Control}};
 		\node[rectangle, fill=tOrng,   from={0, 4 to 6, 7}] {\makecell{Parameters}};
-		\node[rectangle, fill=tYlow,   from={0, 3 to 6, 4}] {\makecell{FileObject}};
-		\node[rectangle, fill=tYlow,   from={0, 2 to 6, 3}] {\makecell{DeviceObject}};
+		\node[rectangle, fill=tYlow,   from={0, 3 to 6, 4}] {\makecell{DeviceObject}};
+		\node[rectangle, fill=tYlow,   from={0, 2 to 6, 3}] {\makecell{FileObject}};
 		\node[rectangle, fill=tGren,   from={0, 1 to 6, 2}] {\makecell{CompletionRoutine}};
 		\node[rectangle, fill=tLblu,   from={0, 0 to 6, 1}] {\makecell{Context}};
 
@@ -848,10 +842,57 @@ In memory, the IRP is followed by one or more \emph{stack locations}, their coun
 	\caption[
 		Layout of the \texttt{IO\_STACK\_LOCATION} structure
 	]{
-		Layout of the \texttt{IO\_STACK\_LOCATION} structure (modified after \cite{Yosifovich2017} using information from \cite{Wdk}). \todo{todo}
+		Layout of the \texttt{IO\_STACK\_LOCATION} structure (modified after \cite{Yosifovich2017} using information from \cite{Wdk}). The \texttt{MajorFunction} field has one of 28 possible values, denoting the request type, e.g. \texttt{IRP\_MJ\_READ} or \texttt{IRP\_MJ\_WRITE}. \texttt{MinorFunction} is used to further specify the type for some of the major functions. We will not discuss \texttt{Flags} and \texttt{Control}, because they are only rarely relevant. The \texttt{Parameters} are ``a monstrous union of structures, each of which valid for a particular major function code or a combination of major/minor codes.'' They contain information further specifying the request, e.g. the byte offset when reading from a file. \texttt{DeviceObject} and \texttt{FileObject} are pointers to the related device and file objects. \texttt{CompletionRoutine} holds a pointer to a completion routine, which will be explained separately. \texttt{Context} is a driver-defined parameter passed to the completion routine.
 	}
-	\label{fig:background.kerneldriver.directio}
+	\label{fig:background.kerneldriver.stacklocation}
 \end{figure}
+
+The I/O manager only initializes the first stack location before sending the IRP over to the driver at the top of the device stack. Each driver, except the lowest in the stack, is then responsible for initializing the stack location for the next driver. If a driver can complete an IRP and no other drivers need to be called, initializing the next stack location is of course not necessary. This initialization can be done in two ways \cite{Yosifovich2017}:
+\begin{itemize}
+	\item if no changes to the stack location are needed, the driver can ``skip'' the current stack location. This means that the next driver will receive the same parameters in its stack location as the current driver.
+	\item if changes to the stack location need to be made, the driver can copy its stack location and modify the copy. Registering a completion routine (explained momentarily) counts as a change, and a driver must copy the stack location instead of skipping it in that case \cite{Wdk}.
+\end{itemize}
+
+The already mentioned completion routines are a way for drivers to intercept the flow of an IRP after its completion by another driver. Completion routines are called in the opposite order that they were registered in, i.e. those registered by lower drivers first. See \autoref{fig:background.kerneldriver.irpflow} for an example. In such a routine, a driver can check the status of the completed IRP and do necessary post-processing. It is even possibly to mark the IRP as uncompleted again and resend it down the stack \cite{Yosifovich2017}.
+
+\begin{figure}[htb!]
+	\center
+	\small
+	\begin{tikzpicture}
+		\node[rect, fill=tBlue, text width=3em, anchor=east] (irp) at (0, 6.9) {\small IRP};
+
+		\node[rect, fill=tYlow, from={0.2, 0.3 to 3.8, 6.2}] {};
+		\node[rect, fill=tLblu, text width=5em] at (2, 5.5)  {\small FiDO};
+		\node[rect, fill=tLblu, text width=5em] at (2, 4.6)  {\small FiDO};
+		\node[rect, fill=tGren, text width=5em] at (2, 2.8)  {\small FiDO};
+		\node[rect, fill=tGren, text width=5em] at (2, 1.9)  {\small FiDO};
+		\node[rect, fill=tBlue, text width=7em, rounded corners=9pt] at (2, 3.7) {\small FDO};
+		\node[rect, fill=tPink, text width=7em, rounded corners=9pt] at (2, 1)   {\small PDO};
+
+		\draw[arrow] (irp.south) to [bend right=30] (0, 5.55);
+		\draw[arrow] (0, 5.45) to [bend right=45] (0, 4.65);
+		\draw[arrow] (0, 4.55) to [bend right=45] (0, 3.75);
+		\draw[arrow] (0, 3.65) to [bend right=45] (0, 2.85);
+		\draw[arrow] (0, 2.75) to [bend right=45] (0, 1.95);
+		\draw[arrow] (0, 1.85) to [bend right=45] (0, 1.05);
+
+		\draw[arrow] (4, 4.65) to [bend right=45] (4, 5.45);
+		\draw[arrow] (4, 3.75) to [bend right=45] (4, 4.55);
+		\draw[arrow] (4, 2.85) to [bend right=45] (4, 3.65);
+		\draw[arrow] (4, 1.95) to [bend right=45] (4, 2.75);
+		\draw[arrow] (4, 1.05) to [bend right=45] (4, 1.85);
+	\end{tikzpicture}
+	\caption[
+		Example IRP flow
+	]{
+		Example IRP flow (modified after \cite{Yosifovich2017}). \todo{todo}
+	}
+	\label{fig:background.kerneldriver.irpflow}
+\end{figure}
+
+``The split of information between the IRP body and its I/O stack location allows for the changing of I/O stack location parameters for the next device in the device stack, while keeping the original request parameters. [...] Also, note that completion routines can be registered by any layer (except the bottom-most one), each having its own place in an I/O stack location (the completion routine is stored in the next lower I/O stack location).'' \cite{Yosifovich2017}
+
+\todo{all io is done on virtual files (page 486, 487)}
 
 \todo{write about:}
 \begin{itemize}
