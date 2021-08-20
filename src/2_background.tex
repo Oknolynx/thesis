@@ -589,7 +589,7 @@ Examples of subkeys of each of these keys are shown in \autoref{fig:background.k
 
 \subsubsection{Important Concepts for Kernel Driver Development}
 \label{chap:background.kerneldriver.concepts}
-The goal of this section is to explain some concepts that are relevant when developing a file system filter driver. They concern memory access, thread contexts, the kernel's I/O system, and communication between kernel and user mode. \todo{may need updating in the future}
+The goal of this section is to explain some concepts that are relevant when developing a file system filter driver. They concern execution contexts, memory access, and the kernel's I/O system.
 
 The code of a driver can run in different thread contexts, depending on how it was called. This is mostly relevant for accessing memory, because the translation of virtual memory addresses into physical addresses depends on the thread context. We will discuss what exactly to keep in mind when accessing memory shortly. The three different contexts that driver code can run in are the following \cite{Yosifovich2017}:
 \begin{itemize}
@@ -806,7 +806,7 @@ An IRP holds a lot of information. For this thesis, it suffices to know about th
 	\item information about the IRP's stack locations, which will be explained momentarily.
 \end{itemize}
 
-In memory, the IRP is followed by one or more \emph{stack locations}, their count matching the number of drivers this IRP will pass through\footnote{\label{fn:background.kerneldriver.adjuststacksize} This value is known when allocating the IRP, because it is equal to the size of the device stack. In some scenarios, most of which involve the filter manager, an IRP might be sent over to a new device stack. This might necessitate readjusting the count of stack locations, if the new device stack has a different size than the one before \cite{Yosifovich2017}. We will discuss the filter manager in \autoref{chap:ourapproach.failed}.}. These stack locations are represented by \texttt{IO\_STACK\_LOCATION} structures, whose content is shown and explained in \autoref{fig:background.kerneldriver.stacklocation}. Because the information about the request is split between the IRP and its stack location, drivers can modify the stack location parameters for the next driver, while keeping the current set of parameters. The original parameters may for example be useful in a completion routine \cite{Yosifovich2017}.
+In memory, the IRP is followed by one or more \emph{stack locations}, their count matching the number of drivers this IRP will pass through\footnote{\label{fn:background.kerneldriver.adjuststacksize} This value is known when allocating the IRP, because it is equal to the size of the device stack. In some scenarios, most of which involve the filter manager, an IRP might be sent over to a new device stack. This might necessitate readjusting the count of stack locations, if the new device stack has a different size than the one before \cite{Yosifovich2017}. We will discuss the filter manager in \autoref{chap:ourapproach.failed}.}. These stack locations are represented by \texttt{IO\_STACK\_LOCATION} structures, whose contents are shown and explained in \autoref{fig:background.kerneldriver.stacklocation}. Because the information about the request is split between the IRP and its stack location, drivers can modify the stack location parameters for the next driver, while keeping the current set of parameters. The original parameters may for example be useful in a completion routine \cite{Yosifovich2017}.
 
 \begin{figure}[htb!]
 	\center
@@ -899,6 +899,16 @@ The already mentioned completion routines are a way for drivers to intercept the
 
 \subsubsection{Debugging Kernel Drivers}
 \label{chap:background.kerneldriver.debugging}
-\todo{WinDbg (page 38), screenshots? don't take away content from \ref{chap:ourapproach.final.architecture}}
+Debugging a program in kernel mode is not as simple as debugging most user mode applications, because it is part of the OS. For example, stopping the execution, e.g. via break points, halts the whole computer. This section will introduce the tools necessary to debug a Windows kernel component.
 
-Debugging a program in kernel mode is not as easy as debugging most user mode applications, because it is a part of the OS.
+There are two official programs for kernel debugging, kd and WinDbg. They are essentially equivalent, with the former being a console debugger and the latter a GUI debugger. Out of personal preference, we will use WinDbg in this thesis. \cite{Yosifovich2017} also uses WinDbg for exploring the internals of Windows, including a lot of screenshots and explaining many useful commands\footnote{\label{fn:background.kerneldriver.windbg} A list of common commands can also be found at \url{http://windbg.info/doc/1-common-cmds.html}.}. \todo{You can also find screenshots of WinDbg from the process of writing and}\\\todo{debugging our driver in \autoref{chap:ourapproach}.}
+
+There are different ways to use WinDbg \cite{Yosifovich2017}:
+\begin{itemize}
+	\item as a debugger for user mode programs. It can be used for viewing and changing the contents of the program's memory, setting breakpoints, and other common debugging techniques. WinDbg can also attach to an already running process.
+	\item to view a crash dump file that Windows created during a system crash\footnote{\label{fn:background.kerneldriver.crashdump} If enabled, the dump file is usually located at \texttt{C:\textbackslash Windows\textbackslash MEMORY.DMP}.}. This way one can find out more about what exactly caused the crash. The available commands are a subset of what would have been available if WinDbg had been debugging the operating system when the crash happened. For example, the call stack of the function that caused the crash can be displayed.
+	\item as a local kernel mode debugger. If booted in debug mode, WinDbg can attach to a currently running instance of Windows. Only a subset of the normally available commands can be used, and some advanced debugging such as setting breakpoints and dumping memory do not work. An alternative for local kernel debugging is the Sysinternals LiveKd program. This simulates a crash dump file using the contents of physical memory, and in contrast to WinDbg, it can dump memory.
+	\item as a remote kernel mode debugger. This is the mode of operation with the most possibilities, but also the one that is the most complicated and expensive to set up. It requires two computers, a target computer, running the OS to be debugged, and a host computer, that uses WinDbg to debug the target. Because WinDbg does not run under the OS that is being debugged, the target computer can be completely halted and the current system state can be examined. The connection between the two computers can be via USB or the local network\footnote{\label{background.kerneldriver.vmdebugging} Debugging via network can also be used to debug a virtual machine, if the hardware for a second real computer is not available. See \href{https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/setting-up-network-debugging-of-a-virtual-machine-host}{the WDK documentation} for more.}.
+\end{itemize}
+
+\todo{screenshot?}
