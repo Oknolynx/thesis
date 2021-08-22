@@ -1,8 +1,28 @@
 \section{Related Work}
 \label{chap:relatedwork}
+\todo{todo}
 
 \subsection{Measuring Filesystem Driver Performance}
 \label{chap:relatedwork.fsperformance}
+In this section, we will layout possibilities for measuring performance on the file system level \todo{as well as present criteria for good benchmarks}. This is the theoretical foundation for most of the experiments described in \autoref{chap:performance}.
+
+\cite{Traeger2008}: criteria for good fs benchmarks, mentions encrypted storage explicitly
+
+\cite{Wright2003}: performance study of file encryption systems
+
+\cite{Agrawal2008}: SSD workload and performance examination
+
+\cite{Yadgar2021}: also SSD-specific, Table 1 has a good overview of ``trace repository'' papers, conclusion has a paragraph on the validity of using old workload traces
+
+\cite{He2017}: also SSD-specific, description of different workloads (not sure how useful, though), developed a new simulator
+
+\cite{Riska2006}, \cite{Riska2006a}, \cite{Leung2008}, \cite{Riska2009}, and \cite{Sehgal2010}: characterization/description of different disk drive workloads (maybe look at what Phoronix Suite/Postmark uses?)
+
+\cite{Seo2014}: explains IO traces, defines classes of traces, and classifies real world traces
+
+\cite{Pereira2013}: critically discusses IO traces and their replays
+
+\cite{Ruemmler1993}: describes three (old) UNIX traces
 
 \subsection{Cryptographic Aspects of LUKS2}
 \label{chap:relatedwork.cryptography}

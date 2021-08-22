@@ -5,6 +5,7 @@
   publisher  = {Microsoft Press},
   title      = {Windows Internals, Part 1: System architecture, processes, threads, memory management, and more},
   year       = {2017},
+  groups     = {Background},
   ranking    = {rank5},
   readstatus = {read},
 }
@@ -18,6 +19,7 @@
   title      = {Evaluating Performance and Energy in File System Server Workloads},
   year       = {2010},
   pages      = {253--266},
+  groups     = {FS Performance},
   ranking    = {rank4},
   readstatus = {skimmed},
 }
@@ -28,6 +30,7 @@
   title      = {A Comparison of File System Workloads},
   year       = {2000},
   pages      = {41--54},
+  groups     = {FS Performance},
   ranking    = {rank2},
   readstatus = {skimmed},
 }
@@ -38,6 +41,7 @@
   title      = {Performance and extension of user space file systems},
   year       = {2010},
   pages      = {206--213},
+  groups     = {Uncategorized},
   ranking    = {rank2},
   readstatus = {skimmed},
 }
@@ -49,6 +53,7 @@
   year         = {2003},
   organization = {IEEE},
   pages        = {47--47},
+  groups       = {FS Performance},
   ranking      = {rank4},
   readstatus   = {skimmed},
 }
@@ -58,6 +63,7 @@
   author     = {Milan Broz},
   note       = {Visited on 2021-07-31},
   year       = {2018},
+  groups     = {Background},
   ranking    = {rank5},
   readstatus = {read},
   url        = {https://gitlab.com/cryptsetup/LUKS2-docs/-/raw/861197a9de9cba9cc3231ad15da858c9f88b0252/luks2_doc_wip.pdf},
@@ -68,6 +74,7 @@
   author     = {Clemens Fruwirth},
   note       = {Visited on 2021-07-31},
   year       = {2018},
+  groups     = {Background},
   ranking    = {rank4},
   readstatus = {read},
   url        = {https://mirrors.edge.kernel.org/pub/linux/utils/cryptsetup/LUKS_docs/on-disk-format.pdf},
@@ -81,6 +88,7 @@
   number    = {1},
   pages     = {37--45},
   volume    = {6},
+  groups    = {FS Performance},
   publisher = {Citeseer},
 }
 
@@ -91,6 +99,7 @@
   year         = {2009},
   organization = {Springer},
   pages        = {183--196},
+  groups       = {Other approaches},
 }
 
 @Article{Kornblum2009,
@@ -101,6 +110,7 @@
   number    = {3-4},
   pages     = {75--84},
   volume    = {5},
+  groups    = {Other approaches},
   publisher = {Elsevier},
 }
 
@@ -110,6 +120,7 @@
   title     = {{BitLocker} Full-Disk Encryption: Four Years Later},
   year      = {2018},
   pages     = {147--150},
+  groups    = {Other approaches},
 }
 
 @InProceedings{Tan2020,
@@ -119,6 +130,7 @@
   year         = {2020},
   organization = {IEEE},
   pages        = {1070--1074},
+  groups       = {Other approaches},
 }
 
 @PhdThesis{Fruhwirth2005,
@@ -126,6 +138,7 @@
   school     = {Vienna University of Technology},
   title      = {New methods in hard disk encryption},
   year       = {2005},
+  groups     = {Background},
   ranking    = {rank4},
   readstatus = {skimmed},
 }
@@ -141,6 +154,7 @@
   bibsource = {dblp computer science bibliography, https://dblp.org},
   biburl    = {https://dblp.org/rec/conf/icissp/HaglMP21.bib},
   doi       = {10.5220/0010313906040610},
+  groups    = {Uncategorized},
 }
 
 @MastersThesis{Polasek2019,
@@ -149,44 +163,55 @@
   title   = {Argon2 security margin for disk encryption passwords},
   year    = {2019},
   comment = {Advisor: Milan Brož},
+  groups  = {Uncategorized},
 }
 
 @InProceedings{Ruemmler1993,
-  author    = {Chris Ruemmler and John Wilkes},
-  booktitle = {Proceedings of the Usenix Winter 1993 Technical Conference, San Diego, California, USA, January 1993},
-  title     = {{UNIX} Disk Access Patterns},
-  year      = {1993},
-  pages     = {405--420},
-  publisher = {{USENIX} Association},
-  bibsource = {dblp computer science bibliography, https://dblp.org},
-  biburl    = {https://dblp.org/rec/conf/usenix/RuemmlerW93.bib},
+  author     = {Chris Ruemmler and John Wilkes},
+  booktitle  = {Proceedings of the Usenix Winter 1993 Technical Conference, San Diego, California, USA, January 1993},
+  title      = {{UNIX} Disk Access Patterns},
+  year       = {1993},
+  pages      = {405--420},
+  publisher  = {{USENIX} Association},
+  bibsource  = {dblp computer science bibliography, https://dblp.org},
+  biburl     = {https://dblp.org/rec/conf/usenix/RuemmlerW93.bib},
+  groups     = {FS Performance},
+  ranking    = {rank3},
+  readstatus = {skimmed},
 }
 
 @Book{Roselli1998,
-  author    = {Roselli, Drew and Anderson, Thomas E.},
-  publisher = {University of California, Berkeley, Computer Science Division},
-  title     = {Characteristics of file system workloads},
-  year      = {1998},
+  author     = {Roselli, Drew and Anderson, Thomas E.},
+  publisher  = {University of California, Berkeley, Computer Science Division},
+  title      = {Characteristics of file system workloads},
+  year       = {1998},
+  groups     = {FS Performance},
+  ranking    = {rank3},
+  readstatus = {skimmed},
 }
 
 @Article{Traeger2008,
-  author    = {Avishay Traeger and Erez Zadok and Nikolai Joukov and Charles P. Wright},
-  journal   = {{ACM} Trans. Storage},
-  title     = {A nine year study of file system and storage benchmarking},
-  year      = {2008},
-  number    = {2},
-  pages     = {5:1--5:56},
-  volume    = {4},
-  bibsource = {dblp computer science bibliography, https://dblp.org},
-  biburl    = {https://dblp.org/rec/journals/tos/TraegerZJW08.bib},
-  doi       = {10.1145/1367829.1367831},
+  author     = {Avishay Traeger and Erez Zadok and Nikolai Joukov and Charles P. Wright},
+  journal    = {{ACM} Trans. Storage},
+  title      = {A nine year study of file system and storage benchmarking},
+  year       = {2008},
+  number     = {2},
+  pages      = {5:1--5:56},
+  volume     = {4},
+  bibsource  = {dblp computer science bibliography, https://dblp.org},
+  biburl     = {https://dblp.org/rec/journals/tos/TraegerZJW08.bib},
+  doi        = {10.1145/1367829.1367831},
+  groups     = {FS Performance},
+  ranking    = {rank5},
+  readstatus = {skimmed},
 }
 
 @Manual{Dmcrypt2020,
-  title = {{dm-crypt}: {Linux} device-mapper crypto target},
-  note  = {Visited on 2021-08-06},
-  year  = {2020},
-  url   = {https://gitlab.com/cryptsetup/cryptsetup/-/wikis/DMCrypt?version_id=ee336a2c1c7ce51d1b09c10472bc777fa1aa18cd},
+  title  = {{dm-crypt}: {Linux} device-mapper crypto target},
+  note   = {Visited on 2021-08-06},
+  year   = {2020},
+  groups = {Background},
+  url    = {https://gitlab.com/cryptsetup/cryptsetup/-/wikis/DMCrypt?version_id=ee336a2c1c7ce51d1b09c10472bc777fa1aa18cd},
 }
 
 @Book{Ferguson2010,
@@ -194,6 +219,7 @@
   publisher = {Wiley},
   title     = {Cryptography Engineering -- Design Principles and Practical Applications},
   year      = {2010},
+  groups    = {Background},
 }
 
 @TechReport{Fips197,
@@ -201,25 +227,29 @@
   institution = {{U.S. Department of Commerce}},
   title       = {{Advanced Encryption Standard (AES)}},
   year        = {2001},
+  groups      = {Background},
 }
 
 @Manual{Ieee2019,
   title        = {{IEEE} Standard for Cryptographic Protection of Data on Block-Oriented Storage Devices},
   organization = {{IEEE Std.} 1619-2018 (Revision of {IEEE Std.} 1619-2007)},
   year         = {2019},
+  groups       = {Background},
 }
 
 @Manual{Cryptsetup2020,
-  title = {Frequently Asked Questions {Cryptsetup/LUKS}},
-  note  = {Visited on 2021-08-10},
-  year  = {2020},
-  url   = {https://gitlab.com/cryptsetup/cryptsetup/-/wikis/FrequentlyAskedQuestions?version_id=6297db166f8ae73c6a616ba874a12f5d43d37fd9},
+  title  = {Frequently Asked Questions {Cryptsetup/LUKS}},
+  note   = {Visited on 2021-08-10},
+  year   = {2020},
+  groups = {Background},
+  url    = {https://gitlab.com/cryptsetup/cryptsetup/-/wikis/FrequentlyAskedQuestions?version_id=6297db166f8ae73c6a616ba874a12f5d43d37fd9},
 }
 
 @Manual{Win32,
-  title = {Programming reference for the {Win32} {API}},
-  note  = {Visited on 2021-08-19},
-  url   = {https://docs.microsoft.com/en-us/windows/win32/api},
+  title  = {Programming reference for the {Win32} {API}},
+  note   = {Visited on 2021-08-19},
+  groups = {Background},
+  url    = {https://docs.microsoft.com/en-us/windows/win32/api},
 }
 
 @Book{Russinovich2016,
@@ -227,12 +257,253 @@
   publisher = {Microsoft Press},
   title     = {Troubleshooting with the {Windows} {Sysinternals} Tools},
   year      = {2016},
+  groups    = {Background},
 }
 
 @Manual{Wdk,
-  title = {{API} reference docs for {Windows} {Driver} {Kit} ({WDK})},
-  note  = {Visited on 2021-08-19},
-  url   = {https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi},
+  title  = {{API} reference docs for {Windows} {Driver} {Kit} ({WDK})},
+  note   = {Visited on 2021-08-19},
+  groups = {Background},
+  url    = {https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi},
+}
+
+@Article{Rodeh2015,
+  author    = {Ohad Rodeh and Haim Helman and David D. Chambliss},
+  journal   = {{ACM} Trans. Storage},
+  title     = {Visualizing Block {IO} Workloads},
+  year      = {2015},
+  number    = {2},
+  pages     = {6:1--6:18},
+  volume    = {11},
+  bibsource = {dblp computer science bibliography, https://dblp.org},
+  biburl    = {https://dblp.org/rec/journals/tos/RodehHC15.bib},
+  doi       = {10.1145/2651422},
+  groups    = {FS Performance},
+}
+
+@InProceedings{Lochmann2017,
+  author    = {Alexander Lochmann and Fabian Bruckner and Olaf Spinczyk},
+  booktitle = {Companion Proceedings of the 8th {ACM/SPEC} on International Conference on Performance Engineering, {ICPE} 2017, L'Aquila, Italy, April 22-26, 2017},
+  title     = {Reproducible Load Tests for Android Systems with Trace-based Benchmarks},
+  year      = {2017},
+  editor    = {Walter Binder and Vittorio Cortellessa and Anne Koziolek and Evgenia Smirni and Meikel Poess},
+  pages     = {73--76},
+  publisher = {{ACM}},
+  bibsource = {dblp computer science bibliography, https://dblp.org},
+  biburl    = {https://dblp.org/rec/conf/wosp/LochmannBS17.bib},
+  doi       = {10.1145/3053600.3053615},
+  groups    = {FS Performance},
+}
+
+@InProceedings{Ogihara2019,
+  author    = {Kazutaka Ogihara},
+  booktitle = {Seventh International Symposium on Computing and Networking Workshops, {CANDAR} 2019 Workshops, Nagasaki, Japan, November 26-29, 2019},
+  title     = {Generating Block {IO} Trace Data from a Cloud Site Using Packet Capture and Analyzing the {IO} Trace Data},
+  year      = {2019},
+  pages     = {455--459},
+  publisher = {{IEEE}},
+  bibsource = {dblp computer science bibliography, https://dblp.org},
+  biburl    = {https://dblp.org/rec/conf/ic-nc/Ogihara19.bib},
+  doi       = {10.1109/CANDARW.2019.00086},
+  groups    = {FS Performance},
+}
+
+@InProceedings{Talwadker2013,
+  author    = {Rukma Talwadker and Kaladhar Voruganti},
+  booktitle = {{IEEE} 29th Symposium on Mass Storage Systems and Technologies, {MSST} 2013, May 6-10, 2013, Long Beach, CA, {USA}},
+  title     = {Paragone: What's next in block {I/O} trace modeling},
+  year      = {2013},
+  pages     = {1--5},
+  publisher = {{IEEE} Computer Society},
+  bibsource = {dblp computer science bibliography, https://dblp.org},
+  biburl    = {https://dblp.org/rec/conf/mss/TalwadkerV13.bib},
+  doi       = {10.1109/MSST.2013.6558436},
+  groups    = {FS Performance},
+}
+
+@InProceedings{Pereira2013,
+  author    = {Thiago Emmanuel Pereira and L{\'{\i}}via M. R. Sampaio and Francisco Vilar Brasileiro},
+  booktitle = {2013 {IEEE} 21st International Symposium on Modelling, Analysis and Simulation of Computer and Telecommunication Systems, San Francisco, CA, USA, August 14-16, 2013},
+  title     = {On the Accuracy of Trace Replay Methods for File System Evaluation},
+  year      = {2013},
+  pages     = {380--383},
+  publisher = {{IEEE} Computer Society},
+  bibsource = {dblp computer science bibliography, https://dblp.org},
+  biburl    = {https://dblp.org/rec/conf/mascots/PereiraSB13.bib},
+  doi       = {10.1109/MASCOTS.2013.56},
+  groups    = {FS Performance},
+}
+
+@InProceedings{Kavalanekar2008,
+  author    = {Swaroop Kavalanekar and Bruce L. Worthington and Qi Zhang and Vishal Sharda},
+  booktitle = {4th International Symposium on Workload Characterization {(IISWC} 2008), Seattle, Washington, USA, September 14-16, 2008},
+  title     = {Characterization of storage workload traces from production Windows Servers},
+  year      = {2008},
+  editor    = {David Christie and Alan Lee and Onur Mutlu and Benjamin G. Zorn},
+  pages     = {119--128},
+  publisher = {{IEEE} Computer Society},
+  bibsource = {dblp computer science bibliography, https://dblp.org},
+  biburl    = {https://dblp.org/rec/conf/iiswc/KavalanekarWZS08.bib},
+  doi       = {10.1109/IISWC.2008.4636097},
+  groups    = {FS Performance},
+}
+
+@InProceedings{Riska2006,
+  author    = {Alma Riska and Erik Riedel},
+  booktitle = {Proceedings of the 2006 {USENIX} Annual Technical Conference, Boston, MA, USA, May 30 - June 3, 2006},
+  title     = {Disk Drive Level Workload Characterization},
+  year      = {2006},
+  editor    = {Atul Adya and Erich M. Nahum},
+  pages     = {97--102},
+  publisher = {{USENIX}},
+  bibsource = {dblp computer science bibliography, https://dblp.org},
+  biburl    = {https://dblp.org/rec/conf/usenix/RiskaR06.bib},
+  groups    = {FS Performance},
+  url       = {http://www.usenix.org/events/usenix06/tech/riska.html},
+}
+
+@InProceedings{Riska2006a,
+  author    = {Alma Riska and Erik Riedel},
+  booktitle = {Third International Conference on the Quantitative Evaluation of Systems {(QEST} 2006), 11-14 September 2006, Riverside, California, {USA}},
+  title     = {Long-Range Dependence at the Disk Drive Level},
+  year      = {2006},
+  pages     = {41--50},
+  publisher = {{IEEE} Computer Society},
+  bibsource = {dblp computer science bibliography, https://dblp.org},
+  biburl    = {https://dblp.org/rec/conf/qest/RiskaR06.bib},
+  doi       = {10.1109/QEST.2006.27},
+  groups    = {FS Performance},
+}
+
+@InProceedings{Riska2009,
+  author    = {Alma Riska and Erik Riedel},
+  booktitle = {Proceedings of the 2009 {IEEE} International Symposium on Workload Characterization, {IISWC} 2009, October 4-6, 2009, Austin, TX, {USA}},
+  title     = {Evaluation of disk-level workloads at different time-scales},
+  year      = {2009},
+  pages     = {158--167},
+  publisher = {{IEEE} Computer Society},
+  bibsource = {dblp computer science bibliography, https://dblp.org},
+  biburl    = {https://dblp.org/rec/conf/iiswc/RiskaR09.bib},
+  doi       = {10.1109/IISWC.2009.5306787},
+  groups    = {FS Performance},
+}
+
+@Article{Kashyap2018,
+  author    = {Anil Kashyap},
+  journal   = {{ACM} Trans. Storage},
+  title     = {Workload Characterization for Enterprise Disk Drives},
+  year      = {2018},
+  number    = {2},
+  pages     = {19:1--19:15},
+  volume    = {14},
+  bibsource = {dblp computer science bibliography, https://dblp.org},
+  biburl    = {https://dblp.org/rec/journals/tos/Kashyap18.bib},
+  doi       = {10.1145/3151847},
+  groups    = {FS Performance},
+}
+
+@Article{Seo2014,
+  author    = {Bumjoon Seo and Sooyong Kang and Jongmoo Choi and Jaehyuk Cha and Youjip Won and Sungroh Yoon},
+  journal   = {{IEEE} Trans. Computers},
+  title     = {{IO} Workload Characterization Revisited: {A} Data-Mining Approach},
+  year      = {2014},
+  number    = {12},
+  pages     = {3026--3038},
+  volume    = {63},
+  bibsource = {dblp computer science bibliography, https://dblp.org},
+  biburl    = {https://dblp.org/rec/journals/tc/SeoKCCWY14.bib},
+  doi       = {10.1109/TC.2013.187},
+  groups    = {FS Performance},
+}
+
+@InProceedings{Gomez2000,
+  author    = {Mar{\'{\i}}a Engracia G{\'{o}}mez and Vicente Santonja},
+  booktitle = {{MASCOTS} 2000, Proceedings of the 8th International Symposium on Modeling, Analysis and Simulation of Computer and Telecommunication Systems, 29 August - 1 September 2000, San Francisco, California, {USA}},
+  title     = {A New Approach in the Modeling and Generation of Synthetic Disk Workload},
+  year      = {2000},
+  pages     = {199--206},
+  publisher = {{IEEE} Computer Society},
+  bibsource = {dblp computer science bibliography, https://dblp.org},
+  biburl    = {https://dblp.org/rec/conf/mascots/GomezS00.bib},
+  doi       = {10.1109/MASCOT.2000.876445},
+  groups    = {FS Performance},
+}
+
+@InProceedings{Gomez2000a,
+  author    = {Mar{\'{\i}}a Engracia G{\'{o}}mez and Vicente Santonja},
+  booktitle = {2000 {IEEE} International Symposium on Performance Analysis of Systems and Software, April 24-35, 2000, Austin, Texas, USA, Proceedings},
+  title     = {A new approach in the analysis and modeling of disk access patterns},
+  year      = {2000},
+  pages     = {172--177},
+  publisher = {{IEEE} Computer Society},
+  bibsource = {dblp computer science bibliography, https://dblp.org},
+  biburl    = {https://dblp.org/rec/conf/ispass/GomezS00.bib},
+  doi       = {10.1109/ISPASS.2000.842297},
+  groups    = {FS Performance},
+}
+
+@Article{Yadgar2021,
+  author    = {Gala Yadgar and Moshe Gabel and Shehbaz Jaffer and Bianca Schroeder},
+  journal   = {{ACM} Trans. Storage},
+  title     = {{SSD}-based Workload Characteristics and Their Performance Implications},
+  year      = {2021},
+  number    = {1},
+  pages     = {8:1--8:26},
+  volume    = {17},
+  bibsource = {dblp computer science bibliography, https://dblp.org},
+  biburl    = {https://dblp.org/rec/journals/tos/YadgarGJS21.bib},
+  doi       = {10.1145/3423137},
+  groups    = {FS Performance},
+}
+
+@Article{Vangoor2019,
+  author    = {Bharath Kumar Reddy Vangoor and Prafful Agarwal and Manu Mathew and Arun Ramachandran and Swaminathan Sivaraman and Vasily Tarasov and Erez Zadok},
+  journal   = {{ACM} Trans. Storage},
+  title     = {Performance and Resource Utilization of {FUSE} User-Space File Systems},
+  year      = {2019},
+  number    = {2},
+  pages     = {15:1--15:49},
+  volume    = {15},
+  bibsource = {dblp computer science bibliography, https://dblp.org},
+  biburl    = {https://dblp.org/rec/journals/tos/VangoorAMRSTZ19.bib},
+  doi       = {10.1145/3310148},
+  groups    = {Uncategorized},
+}
+
+@InProceedings{Agrawal2008,
+  author    = {Nitin Agrawal and Vijayan Prabhakaran and Ted Wobber and John D. Davis and Mark S. Manasse and Rina Panigrahy},
+  booktitle = {2008 {USENIX} Annual Technical Conference, Boston, MA, USA, June 22-27, 2008. Proceedings},
+  title     = {Design Tradeoffs for {SSD} Performance},
+  year      = {2008},
+  editor    = {Rebecca Isaacs and Yuanyuan Zhou},
+  pages     = {57--70},
+  publisher = {{USENIX} Association},
+  bibsource = {dblp computer science bibliography, https://dblp.org},
+  biburl    = {https://dblp.org/rec/conf/usenix/AgrawalPWDMP08.bib},
+  groups    = {FS Performance},
+  url       = {https://www.usenix.org/legacy/event/usenix08/tech/full_papers/agrawal/agrawal.pdf},
+}
+
+@InProceedings{Leung2008,
+  author    = {Andrew W. Leung and Shankar Pasupathy and Garth R. Goodson and Ethan L. Miller},
+  booktitle = {2008 {USENIX} Annual Technical Conference, Boston, MA, USA, June 22-27, 2008. Proceedings},
+  title     = {Measurement and Analysis of Large-Scale Network File System Workloads},
+  year      = {2008},
+  editor    = {Rebecca Isaacs and Yuanyuan Zhou},
+  pages     = {213--226},
+  publisher = {{USENIX} Association},
+  bibsource = {dblp computer science bibliography, https://dblp.org},
+  biburl    = {https://dblp.org/rec/conf/usenix/LeungPG08.bib},
+  groups    = {FS Performance},
+  url       = {http://www.usenix.org/events/usenix08/tech/full_papers/leung/leung.pdf},
 }
 
 @Comment{jabref-meta: databaseType:bibtex;}
+
+@Comment{jabref-meta: grouping:
+0 AllEntriesGroup:;
+1 StaticGroup:FS Performance\;0\;1\;0x00ff00ff\;\;\;;
+1 StaticGroup:Other approaches\;0\;1\;0x0000ffff\;\;\;;
+1 StaticGroup:Background\;0\;1\;0xff0000ff\;\;\;;
+1 StaticGroup:Uncategorized\;0\;1\;0xffff4dff\;\;\;;
+}
