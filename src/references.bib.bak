@@ -19,7 +19,7 @@
   title      = {Evaluating Performance and Energy in File System Server Workloads},
   year       = {2010},
   pages      = {253--266},
-  groups     = {FS Performance},
+  groups     = {Related work},
   ranking    = {rank4},
   readstatus = {skimmed},
 }
@@ -30,7 +30,7 @@
   title      = {A Comparison of File System Workloads},
   year       = {2000},
   pages      = {41--54},
-  groups     = {FS Performance},
+  groups     = {Related work},
   ranking    = {rank2},
   readstatus = {skimmed},
 }
@@ -53,7 +53,7 @@
   year         = {2003},
   organization = {IEEE},
   pages        = {47--47},
-  groups       = {FS Performance},
+  groups       = {Related work},
   ranking      = {rank4},
   readstatus   = {skimmed},
 }
@@ -88,8 +88,9 @@
   number    = {1},
   pages     = {37--45},
   volume    = {6},
-  groups    = {FS Performance},
+  groups    = {Related work},
   publisher = {Citeseer},
+  ranking   = {rank1},
 }
 
 @InProceedings{Tuerpe2009,
@@ -175,7 +176,7 @@
   publisher  = {{USENIX} Association},
   bibsource  = {dblp computer science bibliography, https://dblp.org},
   biburl     = {https://dblp.org/rec/conf/usenix/RuemmlerW93.bib},
-  groups     = {FS Performance},
+  groups     = {Related work},
   ranking    = {rank3},
   readstatus = {skimmed},
 }
@@ -185,7 +186,7 @@
   publisher  = {University of California, Berkeley, Computer Science Division},
   title      = {Characteristics of file system workloads},
   year       = {1998},
-  groups     = {FS Performance},
+  groups     = {Related work},
   ranking    = {rank3},
   readstatus = {skimmed},
 }
@@ -201,7 +202,7 @@
   bibsource  = {dblp computer science bibliography, https://dblp.org},
   biburl     = {https://dblp.org/rec/journals/tos/TraegerZJW08.bib},
   doi        = {10.1145/1367829.1367831},
-  groups     = {FS Performance},
+  groups     = {Related work},
   ranking    = {rank5},
   readstatus = {skimmed},
 }
@@ -278,7 +279,7 @@
   bibsource = {dblp computer science bibliography, https://dblp.org},
   biburl    = {https://dblp.org/rec/journals/tos/RodehHC15.bib},
   doi       = {10.1145/2651422},
-  groups    = {FS Performance},
+  groups    = {Related work},
 }
 
 @InProceedings{Lochmann2017,
@@ -292,7 +293,7 @@
   bibsource = {dblp computer science bibliography, https://dblp.org},
   biburl    = {https://dblp.org/rec/conf/wosp/LochmannBS17.bib},
   doi       = {10.1145/3053600.3053615},
-  groups    = {FS Performance},
+  groups    = {Related work},
 }
 
 @InProceedings{Ogihara2019,
@@ -305,7 +306,7 @@
   bibsource = {dblp computer science bibliography, https://dblp.org},
   biburl    = {https://dblp.org/rec/conf/ic-nc/Ogihara19.bib},
   doi       = {10.1109/CANDARW.2019.00086},
-  groups    = {FS Performance},
+  groups    = {Related work},
 }
 
 @InProceedings{Talwadker2013,
@@ -318,7 +319,7 @@
   bibsource = {dblp computer science bibliography, https://dblp.org},
   biburl    = {https://dblp.org/rec/conf/mss/TalwadkerV13.bib},
   doi       = {10.1109/MSST.2013.6558436},
-  groups    = {FS Performance},
+  groups    = {Related work},
 }
 
 @InProceedings{Pereira2013,
@@ -331,7 +332,7 @@
   bibsource = {dblp computer science bibliography, https://dblp.org},
   biburl    = {https://dblp.org/rec/conf/mascots/PereiraSB13.bib},
   doi       = {10.1109/MASCOTS.2013.56},
-  groups    = {FS Performance},
+  groups    = {Related work},
 }
 
 @InProceedings{Kavalanekar2008,
@@ -345,7 +346,7 @@
   bibsource = {dblp computer science bibliography, https://dblp.org},
   biburl    = {https://dblp.org/rec/conf/iiswc/KavalanekarWZS08.bib},
   doi       = {10.1109/IISWC.2008.4636097},
-  groups    = {FS Performance},
+  groups    = {Related work},
 }
 
 @InProceedings{Riska2006,
@@ -358,7 +359,7 @@
   publisher = {{USENIX}},
   bibsource = {dblp computer science bibliography, https://dblp.org},
   biburl    = {https://dblp.org/rec/conf/usenix/RiskaR06.bib},
-  groups    = {FS Performance},
+  groups    = {Related work},
   url       = {http://www.usenix.org/events/usenix06/tech/riska.html},
 }
 
@@ -372,7 +373,7 @@
   bibsource = {dblp computer science bibliography, https://dblp.org},
   biburl    = {https://dblp.org/rec/conf/qest/RiskaR06.bib},
   doi       = {10.1109/QEST.2006.27},
-  groups    = {FS Performance},
+  groups    = {Related work},
 }
 
 @InProceedings{Riska2009,
@@ -385,7 +386,7 @@
   bibsource = {dblp computer science bibliography, https://dblp.org},
   biburl    = {https://dblp.org/rec/conf/iiswc/RiskaR09.bib},
   doi       = {10.1109/IISWC.2009.5306787},
-  groups    = {FS Performance},
+  groups    = {Related work},
 }
 
 @Article{Kashyap2018,
@@ -399,7 +400,7 @@
   bibsource = {dblp computer science bibliography, https://dblp.org},
   biburl    = {https://dblp.org/rec/journals/tos/Kashyap18.bib},
   doi       = {10.1145/3151847},
-  groups    = {FS Performance},
+  groups    = {Related work},
 }
 
 @Article{Seo2014,
@@ -413,7 +414,7 @@
   bibsource = {dblp computer science bibliography, https://dblp.org},
   biburl    = {https://dblp.org/rec/journals/tc/SeoKCCWY14.bib},
   doi       = {10.1109/TC.2013.187},
-  groups    = {FS Performance},
+  groups    = {Related work},
 }
 
 @InProceedings{Gomez2000,
@@ -426,7 +427,7 @@
   bibsource = {dblp computer science bibliography, https://dblp.org},
   biburl    = {https://dblp.org/rec/conf/mascots/GomezS00.bib},
   doi       = {10.1109/MASCOT.2000.876445},
-  groups    = {FS Performance},
+  groups    = {Related work},
 }
 
 @InProceedings{Gomez2000a,
@@ -439,7 +440,7 @@
   bibsource = {dblp computer science bibliography, https://dblp.org},
   biburl    = {https://dblp.org/rec/conf/ispass/GomezS00.bib},
   doi       = {10.1109/ISPASS.2000.842297},
-  groups    = {FS Performance},
+  groups    = {Related work},
 }
 
 @Article{Yadgar2021,
@@ -453,7 +454,7 @@
   bibsource = {dblp computer science bibliography, https://dblp.org},
   biburl    = {https://dblp.org/rec/journals/tos/YadgarGJS21.bib},
   doi       = {10.1145/3423137},
-  groups    = {FS Performance},
+  groups    = {Related work},
 }
 
 @Article{Vangoor2019,
@@ -480,7 +481,7 @@
   publisher = {{USENIX} Association},
   bibsource = {dblp computer science bibliography, https://dblp.org},
   biburl    = {https://dblp.org/rec/conf/usenix/AgrawalPWDMP08.bib},
-  groups    = {FS Performance},
+  groups    = {Related work},
   url       = {https://www.usenix.org/legacy/event/usenix08/tech/full_papers/agrawal/agrawal.pdf},
 }
 
@@ -494,16 +495,103 @@
   publisher = {{USENIX} Association},
   bibsource = {dblp computer science bibliography, https://dblp.org},
   biburl    = {https://dblp.org/rec/conf/usenix/LeungPG08.bib},
-  groups    = {FS Performance},
+  groups    = {Related work},
   url       = {http://www.usenix.org/events/usenix08/tech/full_papers/leung/leung.pdf},
+}
+
+@InProceedings{He2017,
+  author    = {Jun He and Sudarsun Kannan and Andrea C. Arpaci{-}Dusseau and Remzi H. Arpaci{-}Dusseau},
+  booktitle = {Proceedings of the Twelfth European Conference on Computer Systems, EuroSys 2017, Belgrade, Serbia, April 23-26, 2017},
+  title     = {The Unwritten Contract of Solid State Drives},
+  year      = {2017},
+  editor    = {Gustavo Alonso and Ricardo Bianchini and Marko Vukolic},
+  pages     = {127--144},
+  publisher = {{ACM}},
+  bibsource = {dblp computer science bibliography, https://dblp.org},
+  biburl    = {https://dblp.org/rec/conf/eurosys/HeKAA17.bib},
+  doi       = {10.1145/3064176.3064187},
+  groups    = {Related work},
+}
+
+@TechReport{Korchagin2020,
+  author      = {Korchagin, Ignat},
+  institution = {Cloudflare},
+  title       = {Speeding up {Linux} disk encryption},
+  year        = {2020},
+  note        = {Visited on 2021-08-23},
+  groups      = {Other approaches, Related work},
+  url         = {https://blog.cloudflare.com/speeding-up-linux-disk-encryption},
+}
+
+@InProceedings{Halderman2008,
+  author    = {J. Alex Halderman and Seth D. Schoen and Nadia Heninger and William Clarkson and William Paul and Joseph A. Calandrino and Ariel J. Feldman and Jacob Appelbaum and Edward W. Felten},
+  booktitle = {Proceedings of the 17th {USENIX} Security Symposium, July 28-August 1, 2008, San Jose, CA, {USA}},
+  title     = {Lest We Remember: Cold Boot Attacks on Encryption Keys},
+  year      = {2008},
+  editor    = {Paul C. van Oorschot},
+  pages     = {45--60},
+  publisher = {{USENIX} Association},
+  bibsource = {dblp computer science bibliography, https://dblp.org},
+  biburl    = {https://dblp.org/rec/conf/uss/HaldermanSHCPCFAF08.bib},
+  groups    = {Our approach},
+  url       = {http://www.usenix.org/events/sec08/tech/full_papers/halderman/halderman.pdf},
+}
+
+@Article{Guan2018,
+  author    = {Le Guan and Jingqiang Lin and Ziqiang Ma and Bo Luo and Luning Xia and Jiwu Jing},
+  journal   = {{IEEE} Trans. Dependable Secur. Comput.},
+  title     = {Copker: {A} Cryptographic Engine Against Cold-Boot Attacks},
+  year      = {2018},
+  number    = {5},
+  pages     = {742--754},
+  volume    = {15},
+  bibsource = {dblp computer science bibliography, https://dblp.org},
+  biburl    = {https://dblp.org/rec/journals/tdsc/GuanLMLXJ18.bib},
+  doi       = {10.1109/TDSC.2016.2631548},
+  groups    = {Our approach},
+}
+
+@Article{Li2021,
+  author    = {Congwu Li and Le Guan and Jingqiang Lin and Bo Luo and Quanwei Cai and Jiwu Jing and Jing Wang},
+  journal   = {{IEEE} Trans. Dependable Secur. Comput.},
+  title     = {Mimosa: Protecting Private Keys Against Memory Disclosure Attacks Using Hardware Transactional Memory},
+  year      = {2021},
+  number    = {3},
+  pages     = {1196--1213},
+  volume    = {18},
+  bibsource = {dblp computer science bibliography, https://dblp.org},
+  biburl    = {https://dblp.org/rec/journals/tdsc/LiGLLCJW21.bib},
+  doi       = {10.1109/TDSC.2019.2897666},
+  groups    = {Our approach},
+}
+
+@InProceedings{Simon2018,
+  author    = {Laurent Simon and David Chisnall and Ross J. Anderson},
+  booktitle = {2018 {IEEE} European Symposium on Security and Privacy, EuroS{\&}P 2018, London, United Kingdom, April 24-26, 2018},
+  title     = {What You Get is What You {C:} Controlling Side Effects in Mainstream {C} Compilers},
+  year      = {2018},
+  pages     = {1--15},
+  publisher = {{IEEE}},
+  bibsource = {dblp computer science bibliography, https://dblp.org},
+  biburl    = {https://dblp.org/rec/conf/eurosp/SimonCA18.bib},
+  doi       = {10.1109/EuroSP.2018.00009},
+  groups    = {Our approach},
+}
+
+@InProceedings{Barker2019,
+  author    = {Austen Barker and Staunton Sample and Yash Gupta and Ana McTaggart and Ethan L. Miller and Darrell D. E. Long},
+  booktitle = {Proceedings of the 9th USENIX Workshop on Free and Open Communications on the Internet (FOCI '19)},
+  title     = {Artifice: A Deniable Steganographic File System},
+  year      = {2019},
 }
 
 @Comment{jabref-meta: databaseType:bibtex;}
 
 @Comment{jabref-meta: grouping:
 0 AllEntriesGroup:;
-1 StaticGroup:FS Performance\;0\;1\;0x00ff00ff\;\;\;;
-1 StaticGroup:Other approaches\;0\;1\;0x0000ffff\;\;\;;
+1 StaticGroup:Related work\;0\;1\;0x00ff00ff\;\;\;;
+1 StaticGroup:Other approaches\;0\;0\;0x0000ffff\;\;\;;
 1 StaticGroup:Background\;0\;1\;0xff0000ff\;\;\;;
 1 StaticGroup:Uncategorized\;0\;1\;0xffff4dff\;\;\;;
+1 StaticGroup:Our approach\;0\;1\;0x1a1a1aff\;\;\;;
 }

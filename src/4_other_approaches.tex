@@ -1,9 +1,93 @@
 \section{Other Approaches}
 \label{chap:otherapproaches}
+In this section, we describe both the Linux reference implementation of LUKS2 and the two disk encryption technologies that are featured in the performance comparison in \autoref{chap:performance}.
 
 \subsection{Linux Kernel Implementation of LUKS2}
 \label{chap:otherapproaches.linux}
-\todo{\url{https://web.archive.org/web/20210728082434/https://blog.cloudflare.com/speeding-up-linux-disk-encryption/}}
+To compare the architecture of our driver (see \autoref{chap:ourapproach.final}) to that of the Linux reference implementation, the latter will be described in this section. \todo{To see how the userspace part}\\\todo{of this implementation works, we will take a look at the source code of the \texttt{cryptsetup} tool.} The work of looking through the Linux kernel source code and creating a high-level overview has already been done in \cite{Korchagin2020}.
+
+The reference implementation uses the Linux kernel's Device Mapper \cite{Dmcrypt2020}. This is a kernel driver that allows creating virtual devices in layers. One such layer is known as a \emph{target}. A layer can be thought of as the Linux equivalent of a Windows file system filter driver\footnote{\label{fn:otherapproaches.linux.dmtargetdriver} This comparison holds as far as that a target is implemented as a kernel driver. One can even implement new targets, see e.g. \cite{Barker2019}.}. 
+
+\todo{\url{https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/logical_volume_manager_administration/device_mapper}}
+
+Using the \texttt{dm-crypt} 
+
+\todo{usual workflow of \texttt{cryptsetup} (luksFormat, open, close)}
+
+\todo{\url{https://www.kernel.org/doc/html/v5.13/crypto/intro.html}}
+
+\begin{figure}[htb!]
+	\center
+	\small
+	\begin{tikzpicture}[
+		read/.style={
+			arrow,
+			very thick,
+			draw=tBlue,
+		},
+		write/.style={
+			arrow,
+			very thick,
+			draw=tPink,
+		},
+	]
+		\node[rect, dashed, rounded corners=10pt, from={0, 1.5 to 6.5,  7}] {};
+		\node[rect, dashed, rounded corners=10pt, from={8, 1.5 to 14.5, 7}] {};
+
+		\foreach \x\y in {2.25/6,2.25/2,4/4,10.4/5.4,10.2/5.2,10/5} {
+			\node[rect, draw=gray!70, fill=gray!30, minimum width=0.5cm, minimum height=0.5cm] at (\x,     \y) {};
+			\node[rect, draw=gray!70, fill=gray!30, minimum width=0.5cm, minimum height=0.5cm] at (\x+0.5, \y) {};
+			\node[rect, draw=gray!70, fill=gray!30, minimum width=0.5cm, minimum height=0.5cm] at (\x+1.0, \y) {};
+			\node[rect, draw=gray!70, fill=gray!30, minimum width=0.5cm, minimum height=0.5cm] at (\x+1.5, \y) {};
+		}
+
+		\node[rect, draw=gray!70, fill=gray!30, from={1,    4   to 1.5,  4.5}] {};
+		\node[rect, draw=gray!70, fill=red,     from={0.75, 3.5 to 1.25, 4}]   {};
+		\node[rect, draw=gray!70, fill=black,   from={1.25, 3.5 to 1.75, 4}]   {};
+
+		\node at (1.25,  4.75) {write\_tree};
+		\node at (3,     2.5)  {dmcrypt\_write};
+		\node at (3,     6.5)  {kcryptd\_io};
+		\node at (4.7,   4.5)  {kcryptd};
+		\node at (11.15, 5.9)  {cryptd};
+
+		\node[anchor=north west, xshift=2pt, yshift=-2pt] at (0, 7) {\footnotesize\textit{dm-crypt}};
+		\node[anchor=north west, xshift=2pt, yshift=-2pt] at (8, 7) {\footnotesize\textit{Crypto API}};
+
+		\node[rect, fill=tOrng, rounded corners=4pt, from={4.75, 7.5 to 9.75, 8.5}] (fs)  {File system driver};
+		\node[rect, fill=tPurp, rounded corners=4pt, from={4.75, 0   to 9.75, 1}]   (dev) {Device driver};
+
+		\draw[read] (fs.west)    -| (4.375, 6)    -- (4, 6);
+		\draw[read] (3, 5.75)    -- (3, 3)        -| (5.25, 1);
+		\draw[read] (dev.east)   -| (10.25, 3.25) -| (4.75, 3.75);
+		\draw[read] (5.5, 3.75)  -- (5.5, 3.5)    -| (11.5, 4.75);
+		\draw[read] (11.9, 5.65) |- (fs.east);
+		\node[anchor=east] at (4.375, 8) {\textcolor{tBlue!90!black}{read}};
+
+		\draw[write] (fs.south)   |- (5.5, 5.875) -- (5.5, 4.25);
+		\draw[write] (5.75, 4)    -| (10.5, 4.75);
+		\draw[write] (9.75, 5)    -- (3.25, 5)    |- (1.5, 4.25);
+		\draw[write] (1.25, 3.5)  |- (2, 2);
+		\draw[write] (3.75, 1.75) |- (dev.west);
+		\node[anchor=north west] at (fs.south) {\textcolor{tPink!90!black}{write}};
+	\end{tikzpicture}
+	\caption[
+		dm-crypt and Linux kernel crypto IO traverse path
+	]{
+		\texttt{dm-crypt} and Linux kernel crypto IO traverse path (modified after \cite{Korchagin2020}). A write request from the file system driver first moves into the \texttt{kcryptd} workqueue. This queue takes care of doing the encryption at some later, more convenient point in time\footnotemark. The Linux kernel crypto API does the actual encryption work, and it also may use internal queues. The encrypted write requests are then sorted by \texttt{dm-crypt} using a red-black tree and are sent to the device driver via another workqueue. \\
+		For read requests, the encrypted data is retrieved from the device driver using the \texttt{kcryptd\_io} workqueue. When this data arrives, it is scheduled for decryption in the already mentioned \texttt{kcryptd} queue. When the kernel crypto API has done its work, the decrypted data is ready for the file system driver.
+	}
+	\label{fig:otherapproaches.linux.dmcrypt}
+\end{figure}
+\footnotetext{See \url{https://www.kernel.org/doc/html/v5.13/core-api/workqueue.html} for more details. \todo{ensure correct position}}
+
+\todo{explain that more or less all \texttt{dm-crypt} config happens via one string, \cite{Dmcrypt2020} for the format, \href{https://www.kernel.org/doc/html/v5.13/admin-guide/device-mapper/dm-crypt.html}{kernel doc} for examples}
+
+By default, \texttt{cryptsetup} uses the Linux kernel keyring \todo{(\href{https://www.kernel.org/doc/html/v5.13/security/keys/core.html}{documentation})}. It uses the ``logon'' key type, which means that the key can only be read by the kernel and not by other user space programs.
+
+If explicitly instructed to do so, \texttt{cryptsetup} can also send the key directly to \texttt{dm-crypt}.
+
+After creating the \texttt{dm-crypt} device, the key data that is still resident in user space memory is overwritten with zeroes.
 
 \subsection{VeraCrypt}
 \label{chap:otherapproaches.veracrypt}

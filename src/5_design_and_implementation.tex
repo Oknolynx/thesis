@@ -1,4 +1,4 @@
-\section{Design and implementation of our approach}
+\section{Design and Implementation of Our Approach}
 \label{chap:ourapproach}
 
 \subsection{Failed Attempts}
@@ -16,6 +16,8 @@
 \todo{here and/or in other sections: screenshots from WinDbg showing e.g. a device stack and}\\\todo{luks2flt's device object}
 
 \todo{Also screenshots from the registry showing the modified volume class' lower filters?}
+
+\todo{compare to architecture of reference implementation, as promised in \autoref{chap:otherapproaches.linux}}
 
 \todo{explain ``by the way''? or move to \autoref{chap:background.kerneldriver.concepts}}
 \begin{itemize}
@@ -67,4 +69,30 @@ EncryptWriteBuffer(
 
 \subsection{Security Considerations}
 \label{chap:ourapproach.security}
-\todo{How does \texttt{cryptsetup} send the master key to \texttt{dm-crypt}?}
+\todo{reference \autoref{chap:otherapproaches.linux}?}
+
+\todo{\url{https://crates.io/crates/secrecy}}
+
+\todo{\cite{Halderman2008} \cite{Guan2018} \cite{Li2021} \cite{Simon2018}}
+
+\todo{\url{https://tails.boum.org/contribute/design/memory_erasure/}}
+
+\todo{\url{https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlsecurezeromemory}}
+
+This is the generic solution written in C for clearing memory of the OpenSSL project (as of version 1.1.1l) \todo{[citation needed], explain \texttt{volatile}?}: \href{https://www.openssl.org/docs/man1.1.1/man3/OPENSSL_cleanse.html}{the doc for it}
+\begin{ccode}
+/*
+ * Pointer to memset is volatile so that compiler must de-reference
+ * the pointer and can't assume that it points to any function in
+ * particular (such as memset, which it then might further "optimize")
+ */
+typedef void *(*memset_t)(void *, int, size_t);
+
+static volatile memset_t memset_func = memset;
+
+void OPENSSL_cleanse(void *ptr, size_t len)
+{
+    memset_func(ptr, 0, len);
+}
+\end{ccode}
+The most popular CPU architectures, including x86, x64, ARM, and SPARC, have a hand-written assembly version of \texttt{OPENSSL\_cleanse}. This avoids the compiler from optimizing the zeroing away.
