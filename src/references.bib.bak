@@ -583,6 +583,14 @@
   booktitle = {Proceedings of the 9th USENIX Workshop on Free and Open Communications on the Internet (FOCI '19)},
   title     = {Artifice: A Deniable Steganographic File System},
   year      = {2019},
+  groups    = {Related work},
+}
+
+@Book{Tanenbaum2015,
+  author    = {Tanenbaum, Andrew S. and Bos, Herbert},
+  publisher = {Pearson},
+  title     = {Modern operating systems},
+  year      = {2015},
 }
 
 @Comment{jabref-meta: databaseType:bibtex;}
