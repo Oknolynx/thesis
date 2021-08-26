@@ -6,15 +6,53 @@ In this section, we describe both the Linux reference implementation of LUKS2 an
 \label{chap:otherapproaches.linux}
 To compare the architecture of our driver (see \autoref{chap:ourapproach.final}) to that of the Linux reference implementation, the latter will be described in this section. \todo{To see how the userspace part}\\\todo{of this implementation works, we will take a look at the source code of the \texttt{cryptsetup} tool.} The work of looking through the Linux kernel source code and creating a high-level overview has already been done in \cite{Korchagin2020}.
 
-The reference implementation uses the Linux kernel's Device Mapper \cite{Dmcrypt2020}. This is a kernel driver that allows creating virtual devices in layers. One such layer is known as a \emph{target}. A layer can be thought of as the Linux equivalent of a Windows file system filter driver\footnote{\label{fn:otherapproaches.linux.dmtargetdriver} This comparison holds as far as that a target is implemented as a kernel driver. One can even implement new targets, see e.g. \cite{Barker2019}.}. 
+The reference implementation uses the Linux kernel's Device Mapper \cite{Dmcrypt2020}. This is a kernel driver that allows creating virtual devices in layers. One such layer is known as a \emph{target}. A layer can be thought of as the Linux equivalent of a Windows file system filter driver\footnote{\label{fn:otherapproaches.linux.dmtargetdriver} This comparison holds as far as that the functionality of target is implemented by a kernel driver. It is also possible to implement new targets, as done e.g. in \cite{Barker2019}.}. The device mapper comes with many different available targets, including \cite{Linux}:
+\begin{itemize}
+	\item the \texttt{zero} target, which always returns zeroes for all reads and silently discards all writes. This is similar to Linux' \texttt{/dev/zero}, but in contrast to that this is a block device, not a character device\footnote{\label{fn:otherapproaches.linux.charvsblock} The difference is that block devices read and write blocks, and character devices read and write characters, i.e. bytes \cite{Salzman2007}.}.
+	\item the \texttt{linear} target, which maps a range of blocks of the virtual device to an existing device. Described in more detail: ``map the block range $N$ to $N+L$ of the virtual device to the block range $M$ to $M+L$ of device $X$''. One virtual device can make use of multiple \texttt{linear} targets, e.g. the first half could be mapped to one device, and the second half to another device. \cite{Linux} lists further, and more concrete, examples.
+	\item the \texttt{snapshot} target, which creates a copy-on-write snapshot of a device. These snapshots are ``mountable, saved states of the block device which are also writable without interfering with the original content.'' \cite{Linux}
+	\item the \texttt{crypt} target, which performs transparent encryption of a device (writes are encrypted, reads are decrypted). This is what the LUKS2 reference implementation uses. The encryption is done via the Linux Kernel Crypto API, which offers a variety of different encryption schemes. It is described in more detail in \cite{Linux}.
+\end{itemize}
 
-\todo{\url{https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/logical_volume_manager_administration/device_mapper}}
+The configuration of a virtual device happens via a \emph{mapping table}. The general format is described in \autoref{fig:otherapproaches.linux.mappingtable}, and \autoref{fig:otherapproaches.linux.dmcryptparameters} describes the parameter format for the \texttt{crypt} target.
 
-Using the \texttt{dm-crypt} 
+In a simple use case the LUKS2 device contains only one encrypted segment. The whole mapping table then consists of just one line.\\\todo{\texttt{cryptsetup}'s purpose is to generate that line and send it to the device mapper.}
 
-\todo{usual workflow of \texttt{cryptsetup} (luksFormat, open, close)}
+\begin{figure}[htb!]
+	\center
+	\begin{mdframed}
+		\texttt{<start block> <size> <target name> <target parameters>}
+	\end{mdframed}
+	\caption[
+		Linux device mapper mapping table entry format
+	]{
+		Linux device mapper mapping table entry format (modified after \cite{Dmcrypt2020}). The \texttt{start block} is the first block of the virtual device that this mapping applies to. \texttt{size} indicates the number of blocks, including the start block, that this mapping is for. \texttt{target name} specifies the device mapper target that will be used. The \texttt{target parameters} are specific to each of the different targets. The \texttt{crypt} target's parameters are described in \autoref{fig:otherapproaches.linux.dmcryptparameters}.\\
+		The full mapping for a virtual device can contain multiple entries, each in its own line. It is possible to combine different targets. The following example shows a 1024 block virtual device, whose first half is mapped using the \texttt{linear} target, and whose second half is mapped using the \texttt{crypt} target:\\
+		\texttt{0\space\space\space{}512 linear <linear parameters>}\\
+		\texttt{512 512 crypt\space\space{}<crypt parameters>}
+	}
+	\label{fig:otherapproaches.linux.mappingtable}
+\end{figure}
 
-\todo{\url{https://www.kernel.org/doc/html/v5.13/crypto/intro.html}}
+\begin{figure}[htb!]
+	\center
+	\begin{mdframed}
+		\texttt{<cipher> <key> <iv offset> <device path> <offset>}
+	\end{mdframed}
+	\caption[
+		dm-crypt target parameter format
+	]{
+		\texttt{dm-crypt} target parameter format (modified after \cite{Dmcrypt2020}). \texttt{cipher} specifies the encryption cipher that is used, in the following format: \texttt{cipher[:keycount]-chainmode-ivmode[:ivopts]}. See \autoref{chap:background.luks2.using} for more on ciphers, chain modes (also known as block cipher modes), and IVs. \autoref{tbl:background.luks2.encryptionalgorithms} also lists examples of available encryption algorithms. \todo{key, iv offset, dev path, offset} Additionally, optional parameters can be specified after these parameters.
+	}
+	\label{fig:otherapproaches.linux.dmcryptparameters}
+\end{figure}
+
+\todo{for explaining keys in \autoref{fig:otherapproaches.linux.dmcryptparameters}:}
+By default, \texttt{cryptsetup} uses the Linux kernel keyring \todo{(\href{https://www.kernel.org/doc/html/v5.13/security/keys/core.html}{documentation})}. It uses the ``logon'' key type, which means that the key can only be read by the kernel and not by other user space programs. If explicitly instructed to do so, \texttt{cryptsetup} can also send the key directly to \texttt{dm-crypt}.
+
+Outside of the mapping table, the device mapper's targets are usually written with a \texttt{dm-} prefix, e.g. we write \texttt{dm-crypt} for the device mapper's \texttt{crypt} target.
+
+\todo{describe usual workflow of \texttt{cryptsetup} (luksFormat, open, close)}
 
 \begin{figure}[htb!]
 	\center
@@ -77,15 +115,9 @@ Using the \texttt{dm-crypt}
 		\texttt{dm-crypt} and Linux kernel crypto IO traverse path (modified after \cite{Korchagin2020}). A write request from the file system driver first moves into the \texttt{kcryptd} workqueue. This queue takes care of doing the encryption at some later, more convenient point in time\footnotemark. The Linux kernel crypto API does the actual encryption work, and it also may use internal queues. The encrypted write requests are then sorted by \texttt{dm-crypt} using a red-black tree and are sent to the device driver via another workqueue. \\
 		For read requests, the encrypted data is retrieved from the device driver using the \texttt{kcryptd\_io} workqueue. When this data arrives, it is scheduled for decryption in the already mentioned \texttt{kcryptd} queue. When the kernel crypto API has done its work, the decrypted data is ready for the file system driver.
 	}
-	\label{fig:otherapproaches.linux.dmcrypt}
+	\label{fig:otherapproaches.linux.dmcryptio}
 \end{figure}
 \footnotetext{See \url{https://www.kernel.org/doc/html/v5.13/core-api/workqueue.html} for more details. \todo{ensure correct position}}
-
-\todo{explain that more or less all \texttt{dm-crypt} config happens via one string, \cite{Dmcrypt2020} for the format, \href{https://www.kernel.org/doc/html/v5.13/admin-guide/device-mapper/dm-crypt.html}{kernel doc} for examples}
-
-By default, \texttt{cryptsetup} uses the Linux kernel keyring \todo{(\href{https://www.kernel.org/doc/html/v5.13/security/keys/core.html}{documentation})}. It uses the ``logon'' key type, which means that the key can only be read by the kernel and not by other user space programs.
-
-If explicitly instructed to do so, \texttt{cryptsetup} can also send the key directly to \texttt{dm-crypt}.
 
 After creating the \texttt{dm-crypt} device, the key data that is still resident in user space memory is overwritten with zeroes.
 
@@ -95,5 +127,7 @@ After creating the \texttt{dm-crypt} device, the key data that is still resident
 \subsection{BitLocker}
 \label{chap:otherapproaches.bitlocker}
 \todo{\cite{Kornblum2009} and \cite{Lewis2018} and \cite{Tuerpe2009} and \cite{Tan2020}}
+
+\todo{\texttt{cryptsetup} has experimental support for BitLocker}
 
 \todo{Use Ghidra and look at some of the code of \texttt{fvevol.sys}?}
