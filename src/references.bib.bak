@@ -611,7 +611,6 @@
 @Manual{Salzman2007,
   title  = {The {Linux} {Kernel} Module Programming Guide},
   author = {Salzman, Peter Jay and Burian, Michael and Pomerantz, Ori},
-  note   = {Visited on 2021-08-26},
   year   = {2007},
   groups = {Other approaches},
   url    = {https://tldp.org/LDP/lkmpg/2.6/lkmpg.pdf},
