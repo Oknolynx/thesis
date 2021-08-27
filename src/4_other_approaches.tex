@@ -1,24 +1,24 @@
-\section{Other Approaches}
+\chapter{Other Approaches}
 \label{chap:otherapproaches}
 In this section, we describe both the Linux reference implementation of LUKS2 and the two disk encryption technologies that are featured in the performance comparison in \autoref{chap:performance}.
 
-\subsection{Linux Kernel Implementation of LUKS2}
+\section{Linux Kernel Implementation of LUKS2}
 \label{chap:otherapproaches.linux}
 To compare the architecture of our driver (see \autoref{chap:ourapproach.final}) to that of the Linux reference implementation, the latter will be described in this section. \todo{To see how the userspace part}\\\todo{of this implementation works, we will take a look at the source code of the \texttt{cryptsetup} tool.} The work of looking through the Linux kernel source code and creating a high-level overview has already been done in \cite{Korchagin2020}.
 
-\subsubsection{The Linux Kernel Device Mapper}
+\subsection{The Linux Kernel Device Mapper}
 \label{chap:otherapproaches.linux.dm}
 The reference implementation uses the Linux kernel's Device Mapper \cite{Dmcrypt2020}. This is a kernel driver that allows creating virtual devices in layers. One such layer is known as a \emph{target}. A layer can be thought of as the Linux equivalent of a Windows file system filter driver\footnote{\label{fn:otherapproaches.linux.dmtargetdriver} This comparison holds as far as that the functionality of target is implemented by a kernel driver. It is also possible to implement new targets, as done e.g. in \cite{Barker2019}.}. The device mapper comes with many different available targets, including \cite{Linux}:
-\begin{itemize}
-	\item the \texttt{zero} target, which always returns zeroes for all reads and silently discards all writes. This is similar to Linux' \texttt{/dev/zero}, but in contrast to that this is a block device, not a character device\footnote{\label{fn:otherapproaches.linux.charvsblock} The difference is that character devices read and write a stream of individual byes, and block devices read and write blocks (usually 512 bytes) \cite{Corbet2005}.}.
-	\item the \texttt{linear} target, which maps a range of blocks of the virtual device to an existing device. Described in more detail: ``map the block range $N$ to $N+L$ of the virtual device to the block range $M$ to $M+L$ of device $X$''. One virtual device can make use of multiple \texttt{linear} targets, e.g. the first half could be mapped to one device, and the second half to another device. \cite{Linux} lists further, and more concrete, examples.
-	\item the \texttt{snapshot} target, which creates a copy-on-write snapshot of a device. These snapshots are ``mountable, saved states of the block device which are also writable without interfering with the original content.'' \cite{Linux}
-	\item the \texttt{crypt} target, which performs transparent encryption of a device (writes are encrypted, reads are decrypted). This is what the LUKS2 reference implementation uses. The encryption is done via the Linux Kernel Crypto API, which offers a variety of different encryption schemes. This interface is described in more detail in \cite{Linux}.
-\end{itemize}
+\begin{descitemize}
+	\item[\texttt{zero}] This target always returns zeroes for all reads and silently discards all writes. It is similar to Linux' \texttt{/dev/zero}, but in contrast to that this is a block device, not a character device\footnote{\label{fn:otherapproaches.linux.charvsblock} The difference is that character devices read and write a stream of individual byes, and block devices read and write blocks (usually 512 bytes) \cite{Corbet2005}.}.
+	\item[\texttt{linear}] This target maps a range of blocks of the virtual device to an existing device. Described in more detail: ``map the block range $N$ to $N+L$ of the virtual device to the block range $M$ to $M+L$ of device $X$''.
+	\item[\texttt{snapshot}] This target creates a copy-on-write snapshot of a device. These snapshots are ``mountable, saved states of the block device which are also writable without interfering with the original content.'' \cite{Linux}
+	\item[\texttt{crypt}] This target performs transparent encryption of a device (writes are encrypted, reads are decrypted). This is what the LUKS2 reference implementation uses. The encryption is done via the Linux Kernel Crypto API, which offers a variety of different encryption schemes. This interface is described in more detail in \cite{Linux}.
+\end{descitemize}
 
 The configuration of a virtual device happens via a \emph{mapping table}. The general format is described in \autoref{fig:otherapproaches.linux.mappingtable}, and \autoref{fig:otherapproaches.linux.dmcryptparameters} describes the parameter format for the \texttt{crypt} target.
 
-Outside of the mapping table, the device mapper's targets are usually written with a \texttt{dm-} prefix, e.g. we write \texttt{dm-crypt} for the device mapper's \texttt{crypt} target.
+Outside of the mapping table, the device mapper's targets are usually written with the \texttt{dm-} prefix, e.g. we write \texttt{dm-crypt} for the \texttt{crypt} target.
 
 \begin{figure}[htb!]
 	\center
@@ -49,7 +49,14 @@ Outside of the mapping table, the device mapper's targets are usually written wi
 	\label{fig:otherapproaches.linux.dmcryptparameters}
 \end{figure}
 
-\todo{explain kernel keyring mentioned in \autoref{fig:otherapproaches.linux.dmcryptparameters}}
+\autoref{fig:otherapproaches.linux.dmcryptparameters} mentioned the \emph{kernel keyring} (also known as the kernel key retention service). It is provided by the Linux kernel to cache keys and other secrets for usage by other kernel components. Keys have different attributes, including a key type, a name (also called a description), and a unique serial number. Depending on the key type and a user's permissions, keys can also be accessed from user space using that serial. The serial can be obtained by searching for a key using its type and name. Kernel services can register new key types, supplementary to some already defined types. These include \cite{Linux}\cite{ManKeyrings}:
+\begin{descitemize}
+	\item[\texttt{keyring}] A key of this type contains a list of links to other keys, including other keyrings.
+	\item[\texttt{user}] A key of this type contains a payload of arbitrary binary data (up to 32767 bytes). This data can be accessed and modified from user space.
+	\item[\texttt{logon}] \todo{todo}
+\end{descitemize}
+
+\todo{explain dm-crypt keyring reference format}
 
 \todo{mention \autoref{fig:otherapproaches.linux.dmcryptio}}
 
@@ -117,20 +124,20 @@ Outside of the mapping table, the device mapper's targets are usually written wi
 	\label{fig:otherapproaches.linux.dmcryptio}
 \end{figure}
 
-\subsubsection{The \texttt{cryptsetup} Command Line Utility}
+\subsection{The \texttt{cryptsetup} Command Line Utility}
 \label{chap:otherapproaches.linux.cryptsetup}
 \todo{describe usual workflow of \texttt{cryptsetup} (luksFormat, open, close)}
 
 In a simple use case the LUKS2 device contains only one encrypted segment. The whole mapping table then consists of just one line.\\\todo{\texttt{cryptsetup}'s purpose is to generate that line and send it to the device mapper.}
 
-By default, \texttt{cryptsetup} uses the Linux kernel keyring. It uses the ``logon'' key type, which means that the key can only be read by the kernel and not by other user space programs. If explicitly instructed to do so, \texttt{cryptsetup} can also send the key directly to \texttt{dm-crypt}.
+By default, \texttt{cryptsetup} uses the Linux kernel keyring \todo{cite man page with --disable cli option?}. It uses the ``logon'' key type, which means that the key can only be read by the kernel and not by other user space programs \todo{mention how we got that info, list relevant source code files and lines, show examples}. If explicitly instructed to do so, \texttt{cryptsetup} can also send the key directly to \texttt{dm-crypt}.
 
-After creating the \texttt{dm-crypt} device, the key data that is still resident in user space memory is overwritten with zeroes.
+After creating the \texttt{dm-crypt} device, the key data that is still resident in user space memory is overwritten with zeroes. \todo{mention relevant source code files and lines}
 
-\subsection{VeraCrypt}
+\section{VeraCrypt}
 \label{chap:otherapproaches.veracrypt}
 
-\subsection{BitLocker}
+\section{BitLocker}
 \label{chap:otherapproaches.bitlocker}
 \todo{\cite{Kornblum2009} and \cite{Lewis2018} and \cite{Tuerpe2009} and \cite{Tan2020}}
 

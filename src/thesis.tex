@@ -1,4 +1,4 @@
-\documentclass[a4paper, 12pt, headsepline, twoside]{scrartcl}
+\documentclass[a4paper, 12pt, headsepline, numbers=noenddot]{scrreprt}
 
 \newcommand{\titleDocument}{Design and Implementation of a Windows Kernel Driver for LUKS2-encrypted Volumes}
 
@@ -46,10 +46,10 @@
 \DeclareTOCStyleEntries[
   raggedentrytext,
   numwidth=0pt,
-  numsep=1ex,
   dynnumwidth,
+  numsep=1ex,
   linefill=\TOCLineLeaderFill,
-]{tocline}{section, subsection, subsubsection, paragraph, subparagraph}
+]{tocline}{chapter, section, subsection}
 
 % no sans-serif fonts for (sub)section titles
 \setkomafont{disposition}{\normalfont\bfseries}
@@ -192,18 +192,24 @@
 
 \newpage
 
+\appendix
+
+\input{9_appendix_a}
+
+\newpage
+
 \listoffigures
-\addcontentsline{toc}{section}{List of Figures}
+\addcontentsline{toc}{chapter}{List of Figures}
 
 \newpage
 
 \listoftables
-\addcontentsline{toc}{section}{List of Tables}
+\addcontentsline{toc}{chapter}{List of Tables}
 
 \newpage
 
 \phantomsection
-\addcontentsline{toc}{section}{References}
+\addcontentsline{toc}{chapter}{Bibliography}
 \bibliography{references}
 
 \end{document}
