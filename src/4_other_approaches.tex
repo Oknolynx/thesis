@@ -39,7 +39,7 @@ Outside of the mapping table, the device mapper's targets are usually written wi
 \begin{figure}[htb!]
 	\center
 	\begin{mdframed}
-		\texttt{<cipher> <key> <iv offset> <device path> <offset> [<\#opt> <opt>]}
+		\texttt{<cipher> <key> <iv offset> <device path> <offset> [<\#opt> <opt> <...>]}
 	\end{mdframed}
 	\caption[
 		\texttt{dm-crypt} target parameter format
@@ -52,13 +52,13 @@ Outside of the mapping table, the device mapper's targets are usually written wi
 \autoref{fig:otherapproaches.linux.dmcryptparameters} mentioned the \emph{kernel keyring} (also known as the kernel key retention service). It is provided by the Linux kernel to cache keys and other secrets for usage by other kernel components. Keys have different attributes, including a key type, a name (also called a description), and a unique serial number. Depending on the key type and a user's permissions, keys can also be accessed from user space using that serial. The serial can be obtained by searching for a key using its type and name. Kernel services can register new key types, supplementary to some already defined types. These include \cite{Linux}\cite{ManKeyrings}:
 \begin{descitemize}
 	\item[\texttt{keyring}] A key of this type contains a list of links to other keys, including other keyrings.
-	\item[\texttt{user}] A key of this type contains a payload of arbitrary binary data (up to 32767 bytes). This data can be accessed and modified from user space.
-	\item[\texttt{logon}] \todo{todo}
+	\item[\texttt{user}] A key of this type contains a payload of arbitrary binary data (up to 32767 bytes) and can be accessed and modified from user space. Because of this, keys of this type are not intended to be used by the kernel.
+	\item[\texttt{logon}] This is similar to the \texttt{user} type, but keys of this type can only be read by the kernel. It is however possible to create or update them from user space. A \texttt{logon} key's description must start with a prefix followed by a colon, with the prefix denoting which service the key belongs to.
 \end{descitemize}
 
-\todo{explain dm-crypt keyring reference format}
+The format of the \texttt{key} parameter from \autoref{fig:otherapproaches.linux.dmcryptparameters} when using the kernel keyring is: \texttt{:<size>:<type>:<description>}. \texttt{size} is the key size in bytes, and \texttt{type} and \texttt{description} are the key's type and description, respectively \cite{Dmcrypt2020}. See \autoref{chap:otherapproaches.linux.cryptsetup} for an example. \todo{more precise ref available?}
 
-\todo{mention \autoref{fig:otherapproaches.linux.dmcryptio}}
+As already mentioned, \texttt{dm-crypt} uses the Linux kernel's Crypto API for the de-/encryption of reads and writes. \autoref{fig:otherapproaches.linux.dmcryptio} shows the flow of I/O operations through different parts of \texttt{dm-crypt} and the Crypto API. \cite{Korchagin2020} experimented with skipping some of the queues shown in the figure, and found significantly increased throughput for some hardware configurations and use cases. They therefore implemented the possibility to configure \texttt{dm-crypt} to queue less operations. This is done via optional parameters (see \autoref{fig:otherapproaches.linux.dmcryptparameters}), and can be used since Linux 5.9 \cite{Dmcrypt2020}.
 
 \begin{figure}[htb!]
 	\center
@@ -126,11 +126,31 @@ Outside of the mapping table, the device mapper's targets are usually written wi
 
 \subsection{The \texttt{cryptsetup} Command Line Utility}
 \label{chap:otherapproaches.linux.cryptsetup}
+Manually configuring the device mapper to work with encrypted partitions is impractical. Therefore, \texttt{dm-crypt} is accompanied by the \texttt{cryptsetup} command line utility. Its purpose is, given an encrypted volume, to automatically generate the appropriate \texttt{dm-crypt} configuration and send it to the kernel. It supports multiple different encryption technologies, including \cite{ManCryptsetup}:
+\begin{itemize}
+	\item LUKS and LUKS2 (see \autoref{chap:background.luks2});
+	\item TrueCrypt and VeraCrypt (see \autoref{chap:otherapproaches.veracrypt});
+	\item BitLocker (see \autoref{chap:otherapproaches.bitlocker}). This mode is relatively new and still in experimental status.
+\end{itemize}
+
+For LUKS and LUKS2, there is additional functionality available, including formatting new partitions, upgrading a LUKS partition to LUKS2, and adding new keyslots (these are explained in \autoref{chap:background.luks2}) \cite{ManCryptsetup}.
+
 \todo{describe usual workflow of \texttt{cryptsetup} (luksFormat, open, close)}
 
 In a simple use case the LUKS2 device contains only one encrypted segment. The whole mapping table then consists of just one line.\\\todo{\texttt{cryptsetup}'s purpose is to generate that line and send it to the device mapper.}
 
 By default, \texttt{cryptsetup} uses the Linux kernel keyring \todo{cite man page with --disable cli option?}. It uses the ``logon'' key type, which means that the key can only be read by the kernel and not by other user space programs \todo{mention how we got that info, list relevant source code files and lines, show examples}. If explicitly instructed to do so, \texttt{cryptsetup} can also send the key directly to \texttt{dm-crypt}.
+
+\todo{cite the following source code locations?}\\
+all references are to the version of commit \texttt{ec946b17eb4aec48cbd4b3fc4b77324d4f5f8770}
+\begin{itemize}
+	\item lib/luks2\_digest.c, l. 411: shows the format of the key description -- the prefix is cryptsetup, the rest is the device uuid plus the digest index
+	\item lib/setup.c, l. 6081 adds a key to the keyring (shows that the logon type is used)
+	\item lib/libdevmapper.c, l. 671 shows the format of the complete key reference
+	\item lib/utils\_safe\_memory.c, l. 35f. is the implementation of crypt\_safe\_memzero()
+	\item lib/luks2/luk2\_json\_metadata.c, l. 2221 calls dm\_targets\_free(), which, via some other calls, calls crypt\_safe\_memzero() for the volume key
+	\item different error paths also zero out the memory, e.g. lib/luks2/luks2\_keyslow.c, l. 343
+\end{itemize}
 
 After creating the \texttt{dm-crypt} device, the key data that is still resident in user space memory is overwritten with zeroes. \todo{mention relevant source code files and lines}
 
