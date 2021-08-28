@@ -4,7 +4,7 @@ In this section, we describe both the Linux reference implementation of LUKS2 an
 
 \section{Linux Kernel Implementation of LUKS2}
 \label{chap:otherapproaches.linux}
-To compare the architecture of our driver (see \autoref{chap:ourapproach.final}) to that of the Linux reference implementation, the latter will be described in this section. \todo{To see how the userspace part}\\\todo{of this implementation works, we will take a look at the source code of the \texttt{cryptsetup} tool.} The work of looking through the Linux kernel source code and creating a high-level overview has already been done in \cite{Korchagin2020}.
+To compare the architecture of our driver (see \autoref{chap:ourapproach.final}) to that of the Linux reference implementation, the latter will be described in this section. To see how the user space part of this implementation works, we will take a look at the source code of the \texttt{cryptsetup} tool. The work of looking through the Linux kernel source code and creating a high-level overview has already been done in \cite{Korchagin2020}.
 
 \subsection{The Linux Kernel Device Mapper}
 \label{chap:otherapproaches.linux.dm}
@@ -56,7 +56,7 @@ Outside of the mapping table, the device mapper's targets are usually written wi
 	\item[\texttt{logon}] This is similar to the \texttt{user} type, but keys of this type can only be read by the kernel. It is however possible to create or update them from user space. A \texttt{logon} key's description must start with a prefix followed by a colon, with the prefix denoting which service the key belongs to.
 \end{descitemize}
 
-The format of the \texttt{key} parameter from \autoref{fig:otherapproaches.linux.dmcryptparameters} when using the kernel keyring is: \texttt{:<size>:<type>:<description>}. \texttt{size} is the key size in bytes, and \texttt{type} and \texttt{description} are the key's type and description, respectively \cite{Dmcrypt2020}. See \autoref{chap:otherapproaches.linux.cryptsetup} for an example. \todo{more precise ref available?}
+The format of the \texttt{key} parameter from \autoref{fig:otherapproaches.linux.dmcryptparameters} when using the kernel keyring is: \texttt{:<size>:<type>:<description>}. \texttt{size} is the key size in bytes, and \texttt{type} and \texttt{description} are the key's type and description, respectively \cite{Dmcrypt2020}. See \autoref{chap:otherapproaches.linux.cryptsetup} for an example value of this parameter, created by the \texttt{cryptsetup} tool.
 
 As already mentioned, \texttt{dm-crypt} uses the Linux kernel's Crypto API for the de-/encryption of reads and writes. \autoref{fig:otherapproaches.linux.dmcryptio} shows the flow of I/O operations through different parts of \texttt{dm-crypt} and the Crypto API. \cite{Korchagin2020} experimented with skipping some of the queues shown in the figure, and found significantly increased throughput for some hardware configurations and use cases. They therefore implemented the possibility to configure \texttt{dm-crypt} to queue less operations. This is done via optional parameters (see \autoref{fig:otherapproaches.linux.dmcryptparameters}), and can be used since Linux 5.9 \cite{Dmcrypt2020}.
 
@@ -130,29 +130,38 @@ Manually configuring the device mapper to work with encrypted partitions is impr
 \begin{itemize}
 	\item LUKS and LUKS2 (see \autoref{chap:background.luks2});
 	\item TrueCrypt and VeraCrypt (see \autoref{chap:otherapproaches.veracrypt});
-	\item BitLocker (see \autoref{chap:otherapproaches.bitlocker}). This mode is relatively new and still in experimental status.
+	\item BitLocker (see \autoref{chap:otherapproaches.bitlocker}). The support for it is relatively new and still in experimental status.
 \end{itemize}
 
-For LUKS and LUKS2, there is additional functionality available, including formatting new partitions, upgrading a LUKS partition to LUKS2, and adding new keyslots (these are explained in \autoref{chap:background.luks2}) \cite{ManCryptsetup}.
+For LUKS and LUKS2, there is additional functionality available, including formatting new partitions, upgrading a LUKS partition to LUKS2, and adding new keyslots (which have been described in \autoref{chap:background.luks2}) \cite{ManCryptsetup}.
 
-\todo{describe usual workflow of \texttt{cryptsetup} (luksFormat, open, close)}
+To illustrate the usual workflow and explain some details ``hands-on'', we will use the following example: suppose we want to use the LUKS2-encrypted partition located at \texttt{/dev/sda1}. We will describe how to make the decrypted partition available, how to mount the contained file system, and how to unmount it and relock the partition again. For the first step, we will also take a look at parts of \texttt{cryptsetup}'s source code. This allows us to see what exactly is happening behind the scenes. We assume that no errors occur and that all supplied parameters, including the entered password, are correct. For the steps involving \texttt{cryptsetup}, please refer to \cite{ManCryptsetup} for more detailed information. See \autoref{chap:onlinereferences} for information on which version of \texttt{cryptsetup} the following paragraphs refer to.
 
-In a simple use case the LUKS2 device contains only one encrypted segment. The whole mapping table then consists of just one line.\\\todo{\texttt{cryptsetup}'s purpose is to generate that line and send it to the device mapper.}
+\paragraph{Making the decrypted partition available}
+From the user's perspective, this is not complex: we run \texttt{cryptsetup open /dev/sda1 crypto}. This instructs \texttt{cryptsetup} to decrypt the partition and make it available under the name \texttt{crypto} (we will see in a moment what role exactly this name plays). During the process, the user has to enter the password for one of the available keyslots. If the entered password matches a keyslot, the decrypted partition will be available at \texttt{/dev/mapper/crypto}. The last part of the path is specified by the name that we supplied when invoking the command.
 
-By default, \texttt{cryptsetup} uses the Linux kernel keyring \todo{cite man page with --disable cli option?}. It uses the ``logon'' key type, which means that the key can only be read by the kernel and not by other user space programs \todo{mention how we got that info, list relevant source code files and lines, show examples}. If explicitly instructed to do so, \texttt{cryptsetup} can also send the key directly to \texttt{dm-crypt}.
+Under the hood however, a lot of work gets done. After command line argument parsing, reading and verifying the on-disk header, and reading the password from the user, these are important parts of the source code:
+\begin{enumerate}
+	\item \texttt{luks2\_keyslot\_get\_key()} in \texttt{lib/luks2/luks2\_keyslot\_luks2.c}: this hashes the given password (l. 353), decrypts the keyslot area using the hash (l. 365), and merges the decrypted area (l. 370). The merged decrypted area is the derived master key.
+	\item \texttt{\_open\_and\_verify()} in \texttt{lib/luks2/luks2\_keyslot.c}: this verifies the derived master key (l. 340).
+	\item \texttt{get\_key\_description\_by\_digest()} in \texttt{lib/luks2/luks\_digest.c}: this creates the description for loading the key into the keyring. The description is always of the format \texttt{cryptsetup:<uuid>-<digest>}, where \texttt{uuid} is the UUID of the encrypted partition, and \texttt{digest} is the index of the digest (in the JSON array of digests) (l. 411).
+	\item \texttt{\_open\_and\_activate()} in \texttt{lib/setup.c}: this adds the master key to the kernel keyring, if instructed to do so\footnote{\label{fn:otherapproaches.linux.keyring} This is the default behaviour (see \texttt{lib/libcryptsetup.h}, l. 733) and can be disabled with the \texttt{---disable-keyring} command line option \cite{ManCryptsetup}.} (l. 4003). Note that the type of the key is always \texttt{logon}, as can be seen in \texttt{crypt\_volume\_key\_load\_in\_keyring()} (l. 6081).
+	\item \texttt{get\_dm\_crypt\_params()} in \texttt{lib/libdevmapper.c}: this creates the \texttt{dm-crypt} parameter string as described in \autoref{fig:otherapproaches.linux.dmcryptparameters} (l. 684). The key is either formatted as a keyring reference (l. 671) or hexadecimally (l. 675).
+	\item \texttt{\_dm\_create\_device()} in \texttt{lib/libdevmapper.c}: this sends the parameters to the device mapper (l. 1390).
+	\item \texttt{LUKS2\_activate()} in \texttt{lib/luks2/luks2\_json\_metadata.c}: this frees the memory containing the parameters sent to the device mapper (l. 2221), including the master key. The key gets overwritten with zeroes before being freed, with special care taken to avoid the compiler to optimize the zeroing out (see \texttt{crypt\_safe\_memzero()} in \texttt{lib/utils\_safe\_memory.c}).
+\end{enumerate}
 
-\todo{cite the following source code locations?}\\
-all references are to the version of commit \texttt{ec946b17eb4aec48cbd4b3fc4b77324d4f5f8770}
+\paragraph{Mounting the contained file system}
+This works like mounting any non-encrypted partition. The idea of \texttt{dm-crypt} is that the encryption is transparent, i.e. the newly created virtual device behaves just like a regular, non-encrypted partition. Mounting can therefore be achieved via \texttt{mount /dev/mapper/crypto <mount point>}.
+
+\paragraph{Unmounting and relocking}
+Unmounting, too, works as usual: \texttt{umount <mount point>}. Relocking the partition, i.e. removing the \texttt{/dev/mapper/crypto} mapping, can be achieved via \texttt{cryptsetup close crypto}.
+
+\paragraph{Example of generated parameters} Finally, we present an example of complete \texttt{dm-crypt} parameters, as generated by \texttt{cryptsetup}. These are the parameters for a device encrypted with AES-XTS with two 256 bit keys\footnote{\label{fn:otherapproaches.linux.aesxtskeys} Recall from \autoref{chap:background.luks2.using} that the XTS modes needs two keys: a data encryption key and a tweak key.}: \texttt{aes-xts-plain64 <key> 0 /dev/sda1 32768}. The \texttt{key} parameter format depends on whether the kernel keyring is used or not:
 \begin{itemize}
-	\item lib/luks2\_digest.c, l. 411: shows the format of the key description -- the prefix is cryptsetup, the rest is the device uuid plus the digest index
-	\item lib/setup.c, l. 6081 adds a key to the keyring (shows that the logon type is used)
-	\item lib/libdevmapper.c, l. 671 shows the format of the complete key reference
-	\item lib/utils\_safe\_memory.c, l. 35f. is the implementation of crypt\_safe\_memzero()
-	\item lib/luks2/luk2\_json\_metadata.c, l. 2221 calls dm\_targets\_free(), which, via some other calls, calls crypt\_safe\_memzero() for the volume key
-	\item different error paths also zero out the memory, e.g. lib/luks2/luks2\_keyslow.c, l. 343
+	\item \texttt{:64:logon:cryptsetup:59691c6c-a764-4c59-a876-cbc0c55802d5-d0} is a possible reference to a key in the keyring;
+	\item \texttt{91bc1104b514053ae2420a09d0ba331fe8fa13acad6f9145697a5d28f2b7cb4a...} is the hexadecimal representation of the key (only the first 64 of the 128 characters are shown).
 \end{itemize}
-
-After creating the \texttt{dm-crypt} device, the key data that is still resident in user space memory is overwritten with zeroes. \todo{mention relevant source code files and lines}
 
 \section{VeraCrypt}
 \label{chap:otherapproaches.veracrypt}
