@@ -54,9 +54,9 @@
 % no sans-serif fonts for (sub)section titles
 \setkomafont{disposition}{\normalfont\bfseries}
 
-% make \autoref{} use "section X" for sub(sub)sections
-\let\subsectionautorefname\sectionautorefname
-\let\subsubsectionautorefname\sectionautorefname
+% make \autoref{} use "chapter X" for (sub)sections
+\let\sectionautorefname\chapterautorefname
+\let\subsectionautorefname\chapterautorefname
 
 % change default label for first level of itemize
 \setlist[itemize,1]{label=\textbf{--}}

@@ -1,25 +1,47 @@
 \chapter{Related Work}
 \label{chap:relatedwork}
+To our knowledge, we are the first to implement parts of the LUKS2 specification for the Windows operating system. However, there are of course other file encryption systems and implementations of kernel drivers for similar purposes. In this section we present a selection of these, and additionally list related work in the fields of driver testing and file system benchmarking. In addition to the following paragraphs, \autoref{chap:otherapproaches} describes three other implementations of encryption systems for partitions, including the reference implementation of LUKS2.
+
+\cite{Korchagin2020} partially describes the inner workings of the Linux kernel framework that LUKS2's reference implementation uses. They implemented a new feature to configure whether read and write requests should be queued in the kernel. Turning the queueing off resulted in significantly increased throughput for certain hardware configurations and use cases. \todo{optimizations also mentioned in \autoref{chap:otherapproaches.linux.dm}, remove or rewrite there?}
+
+An implementation of a kernel driver for purposes that are similar to ours, but for Linux instead of Windows, is presented in \cite{Barker2019}. This driver adds support for a plausibly deniable file system to Linux, i.e. the data written to the disk by the driver is ``indistinguishable from other pseudorandom blocks on the disk''. Like the LUKS2 reference implementation, the driver makes use of the Linux kernel device mapper infrastructure, which is described in \autoref{chap:otherapproaches.linux.dm}.
+
+A comparison and performance study of various file encryption systems can be found in \cite{Wright2003}. The result is that the performance of encrypted hard disks is good enough for practical usage, in part thanks to good usage of caches. They also identify problems in hard disk encryption, including a lack of common standards. LUKS2, the standard that our driver implements, tries to solve that particular problem. Another problem is the lack of ensuring the integrity of the encrypted data. This is experimentally supported by LUKS2 and its reference implementation (see the ``Authenticated data encryption'' section of \cite{ManCryptsetup}), but not implemented in our driver.
+
+\cite{Tsegaye2004} features a description of the Windows Driver Model, and also compares it to the kernel driver architecture of Linux. The comparison is exemplified by implementing a simple kernel driver with equivalent functionality for both operating systems. The example driver performs I/O from user to kernel buffers, showcasing important concepts for driver development.
+
+The implementation of a Windows kernel driver is described in \cite{Battistoni2008}. This driver is used as the logging component of an intrusion detection system. The events that are logged are gathered by the driver through intercepted syscalls. Similarly to our driver, this driver can be configured by a user space application that sends its messages via device I/O control requests.
+
+As an addition to the Driver Verifier tool provided by Microsoft, other solutions for testing implementations of Windows kernel drivers have been developed. \cite{Ball2006} implements a static analysis tool, that, in contrast to the Driver Verifier, does not require executing the driver for testing. Instead, it applies a set of rules to prove correct usage of the API exposed by Windows to device drivers. Rules for both the WDM and the KMDF frameworks are included, and the authors report a high rate of correctly identified errors in drivers (up to 80\%). Another, more specialized tool, is the one presented in \cite{Ni2012}. It can be used for testing the security of a driver's dispatch routine for device I/O control requests, achieving a high coverage of all possible code paths. Usage of this tool has already lead to finding several previously unknown vulnerabilities.
+
+Relevant for \autoref{chap:performance} of this thesis, \cite{Traeger2008} introduces criteria for good benchmarks of file systems and storage. The authors explicitly mention encrypted storage and have useful suggestions for benchmarking these systems. These include comparing the encrypted file systems performance to a modified version, which works exactly the same except that no cryptographic actions are performed (sometimes called the null cipher).
+
+Finally, to thoroughly evaluate the performance of an encrypted storage system, one needs to test it under conditions that resemble the real world as good as possible. \cite{Riska2006}, \cite{Riska2006a}, \cite{Leung2008}, \cite{Riska2009}, and \cite{Sehgal2010} \todo{better selection?} present, describe, and analyse different disk drive workloads collected on real hardware.
+
+%\begin{itemize}
+%	\item \cite{Tsegaye2004}: compares the driver models of Windows and Linux, both in theory and in practice (implements a simple driver for both architectures)
+%	\item \cite{Wright2003}: performance study of file encryption systems
+%	\item \cite{Battistoni2008}: uses a Windows kernel driver to implement an intrusion detection and logging system that can intercept syscalls
+%	\item \cite{Barker2019}: implements a ``fully deniable steganographic file system'' using the Linux kernel's Device Mapper (which is described in \autoref{chap:otherapproaches.linux})
+%	\item \cite{Ball2006}: describes how to statically test Windows device drivers for correctness
+%	\item \cite{Ni2012}: introduces a method for security testing of Windows kernel drivers (I think only for IOCTLs dispatch routines?)
+%	\item \cite{Korchagin2020}: performance optimization of the Linux kernel subsystem that LUKS2 uses under Linux
+%	\item \cite{Traeger2008}: presents criteria for good fs benchmarks, mentions encrypted storage explicitly
+%	\item \cite{Riska2006}, \cite{Riska2006a}, \cite{Leung2008}, \cite{Riska2009}, and \cite{Sehgal2010}: characterization/description of different disk drive workloads (maybe look at what Phoronix Suite/Postmark uses?)
+%\end{itemize}
+
 \todo{search for workload descriptions for more specific use cases? e.g. web browsing, gaming, \ldots}
 
-\cite{Traeger2008}: criteria for good fs benchmarks, mentions encrypted storage explicitly
-
-\cite{Wright2003}: performance study of file encryption systems
-
-\cite{Agrawal2008}: SSD workload and performance examination
-
-\cite{Yadgar2021}: also SSD-specific, Table 1 has a good overview of ``trace repository'' papers, conclusion has a paragraph on the validity of using old workload traces
-
-\cite{He2017}: also SSD-specific, description of different workloads (not sure how useful, though), developed a new simulator
-
-\cite{Riska2006}, \cite{Riska2006a}, \cite{Leung2008}, \cite{Riska2009}, and \cite{Sehgal2010}: characterization/description of different disk drive workloads (maybe look at what Phoronix Suite/Postmark uses?)
-
-\cite{Seo2014}: explains IO traces, defines classes of traces, and classifies real world traces
-
-\cite{Pereira2013}: critically discusses IO traces and their replays
-
-\cite{Ruemmler1993}: describes three (old) UNIX traces
-
-\cite{Korchagin2020}: performance optimization of the Linux kernel subsystem that LUKS2 uses under Linux
-
-\cite{Barker2019}: implements a ``fully deniable steganographic file system'' using the Linux kernel's Device Mapper (explained in \autoref{chap:otherapproaches.linux})
+%\cite{Agrawal2008}: SSD workload and performance examination
+%
+%\cite{Yadgar2021}: also SSD-specific, Table 1 has a good overview of ``trace repository'' papers, conclusion has a paragraph on the validity of using old workload traces
+%
+%\cite{He2017}: also SSD-specific, description of different workloads (not sure how useful, though), developed a new simulator
+%
+%\cite{Seo2014}: explains IO traces, defines classes of traces, and classifies real world traces
+%
+%\cite{Pereira2013}: critically discusses IO traces and their replays
+%
+%\cite{Ruemmler1993}: describes three (old) UNIX traces
+%
+%\cite{Okolica2011}: ``describes a general methodology for reverse code engineering of Windows drivers memory structures'' and also applies it practically
