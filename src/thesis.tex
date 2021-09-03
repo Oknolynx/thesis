@@ -4,7 +4,10 @@
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage{lmodern}
+% see e.g. the answers to https://tex.stackexchange.com/q/59702 for a list of nice fonts
+%\usepackage{cochineal} % okay ff ligature, lightweight
+\usepackage{charter} % good ff ligature, more heavyweight than cochineal
+%\usepackage{lmodern} % bad ff ligature
 \usepackage[bookmarksnumbered, pdftitle={\titleDocument}, pdfauthor={Max Ihlenfeldt}]{hyperref}
 \usepackage{geometry}
 \usepackage{capt-of}
@@ -59,7 +62,7 @@
 \let\subsectionautorefname\chapterautorefname
 
 % change default label for first level of itemize
-\setlist[itemize,1]{label=\textbf{--}}
+\setlist[itemize,1]{label=--}
 
 % colours for code listings
 \definecolor{mGreen}{rgb}{0, 0.6, 0}
@@ -195,6 +198,10 @@
 \appendix
 
 \input{9_appendix_a}
+
+\newpage
+
+\input{10_appendix_b}
 
 \newpage
 

@@ -1,0 +1,121 @@
+\chapter{Disassembly Code Listings}
+\label{app:disassembly}
+%Following is all the disassembly code that was shown in \autoref{chap:otherapproaches.bitlocker.decompiling}.
+%
+\begin{figure}[htb!]
+	\begin{ccode}
+void DeleteKey(longlong param_1) {
+    if (param_1 != 0) {
+        FveDestroyCryptoKeyData(param_1);
+        FveSecureZeroAndFlush(
+            *(undefined **)(param_1 + 0x10),
+            (ulonglong)*(uint *)(param_1 + 0x18)
+        );
+        ExFreePoolWithTag(param_1, 0x656e6f4e);
+    }
+    return;
+}
+	\end{ccode}
+	\caption[
+		Disassembly of the \texttt{DeleteKey} function
+	]{
+		Disassembly of the \texttt{DeleteKey} function
+	}
+	\label{fig:appb.deletekey}
+\end{figure}
+
+\begin{figure}[htb!]
+	\begin{ccode}
+uVar5 = FveInitPerfCounters(local_res8);
+uVar12 = (ulonglong)uVar5;
+psVar13 = param_2;
+if (-1 < (int)uVar5) {
+bVar3 = true;
+lVar9 = 0x1c;
+ppcVar11 = (code **)(param_1 + 0xe);
+while (lVar9 != 0) {
+    lVar9 = lVar9 + -1;
+    *ppcVar11 = FveFilterSkip;
+    ppcVar11 = ppcVar11 + 1;
+}
+param_1[0xe] = FveFilterCreate;
+param_1[0x10] = FveFilterClose;
+param_1[0x20] = FveFilterCleanup;
+param_1[0x11] = FveFilterRundownRead;
+param_1[0x12] = FveFilterRundownWrite;
+param_1[0x1c] = FveFilterDeviceControl;
+param_1[0x24] = FveFilterPower;
+param_1[0x29] = FUN_1c0086280;
+*(code **)(param_1[6] + 8) = FUN_1c0087510;
+param_1[0xd] = FUN_1c00a6f40;
+IoRegisterBootDriverReinitialization(param_1, ReInitialize, 0);
+puVar10 = (undefined8 *)&DAT_00000050;
+psVar13 = (short *)&DAT_30455646;
+uVar6 = ExAllocatePoolWithTag(0x200);
+local_res8[9] = uVar6;
+if ((void *)local_res8[9] == (void *)0x0) {
+    uVar12 = 0xc000009a;
+	\end{ccode}
+	\caption[
+		Disassembly of parts of the \texttt{DriverEntry} function
+	]{
+		Disassembly of parts of the \texttt{DriverEntry} function
+	}
+	\label{fig:appb.driverentry}
+\end{figure}
+
+\begin{figure}[htb!]
+	\begin{ccode}
+NTSTATUS FveXtsAesDecrypt(
+    BCRYPT_KEY_HANDLE *param_1,
+    undefined8 param_2,
+    undefined8 param_3,
+    PUCHAR param_4,
+    ulonglong param_5,
+    PUCHAR param_6
+) {
+    ulonglong uVar1;
+    NTSTATUS NVar2;
+    ULONG local_res10[2];
+    undefined8 local_res18;
+    
+    uVar1 = param_5;
+    local_res10[0] = 0;
+    if (param_5 < 0x100000000) {
+        local_res18 = param_3;
+        if (((DAT_1c002f3b8 != 0) && (DAT_1c002f3b0 != 0)) &&
+            (*(code **)(DAT_1c002f3b0 + 0x48) != (code *)0x0))
+        {
+            (**(code **)(DAT_1c002f3b0 + 0x48))();
+        }
+        NVar2 = BCryptDecrypt(
+            *param_1,
+            param_4,
+            (ULONG)uVar1,
+            (void *)0x0,
+            (PUCHAR)&local_res18,
+            8,
+            param_6,
+            (ULONG)uVar1,
+            local_res10,
+            0
+        );
+        if (((DAT_1c002f3b8 != 0) && (DAT_1c002f3b0 != 0)) &&
+            (*(code **)(DAT_1c002f3b0 + 0x48) != (code *)0x0))
+        {
+            (**(code **)(DAT_1c002f3b0 + 0x48))();
+        }
+    }
+    else {
+        NVar2 = -0x3fffff6b;
+    }
+    return NVar2;
+}
+	\end{ccode}
+	\caption[
+		Disassembly of the \texttt{FveXtsAesDecrypt} function
+	]{
+		Disassembly of the \texttt{FveXtsAesDecrypt} function
+	}
+	\label{fig:appb.xtsdecrypt}
+\end{figure}

@@ -205,7 +205,7 @@ To unlock a segment means to derive the cryptographic key that is needed for rea
 
 LUKS2 uses a process called \emph{anti-forensic splitting} to store the master key on disk. This method was introduced in \cite{Fruhwirth2005}. It is used to diffuse the key's bytes into a longer sequence of bytes that has the following property: if at least one bit of the diffused sequence is changed, the key cannot be recovered. This is achieved by a clever combination of XOR and a hash function. The motivation behind this to make it easier (or possible) to dispose of an old key in such a way that it cannot be recovered from the disk. This is because it is much more feasible to partially erase a long sequence of bytes than to completely erase a short sequence. Erasing here means to overwrite the data in such a way that it cannot be recovered, which is not as trivial as one might think.
 
-\cite{Fruhwirth2005} calls the operation that splits data anti-forensically AFsplit and the recovery operation AFmerge. We will adhere to this convention (with slight variations).
+\cite{Fruhwirth2005} calls the operation that splits data anti-forensically AFsplit and the recovery operation AFmerge. We will adhere to this convention.
 
 To necessitate the need of a password to recover the key, the data is also encrypted before it gets written to the disk. The encryption key is a hash of the password obtained by a PBKDF.
 
@@ -218,7 +218,7 @@ The properties of anti-forensic splitting can be used when the user wants to cha
 	\begin{tikzpicture}
 		\node[rect, anchor=east] (pbkdf) at (8, 4) {\small PBKDF2};
 		\node[rect]              (ciphr) at (3, 2) {\small Cipher};
-		\node[rect, anchor=west] (merge) at (8, 2) {\small AF-merge};
+		\node[rect, anchor=west] (merge) at (8, 2) {\small AFmerge};
 		\node[rect, anchor=east] (rtcip) at (8, -0.5) {\small Real time cipher};
 
 		\draw[arrow] (ciphr)                   -- node[anchor=south, yshift=-4pt] {\small\makecell{Split master key}}  (merge);

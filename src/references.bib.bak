@@ -603,7 +603,7 @@
 
 @Manual{Linux,
   title  = {The {Linux} {Kernel} 5.13 documentation},
-  note   = {Visited 2021-08-26},
+  note   = {Visited on 2021-08-26},
   groups = {Other approaches},
   url    = {https://www.kernel.org/doc/html/v5.13},
 }
@@ -688,6 +688,40 @@
   biburl    = {https://dblp.org/rec/conf/eurosys/BallBCLLMORU06.bib},
   doi       = {10.1145/1217935.1217943},
   groups    = {Related work},
+}
+
+@InProceedings{Battistoni2008,
+  author    = {Roberto Battistoni and Alessandro Di Biagio and Roberto Di Pietro and Matteo Formica and Luigi V. Mancini},
+  booktitle = {Proceedings of The {IFIP} {TC-11} 23rd International Information Security Conference, {IFIP} 20th World Computer Congress, {IFIP} {SEC} 2008, September 7-10, 2008, Milano, Italy},
+  title     = {A Live Digital Forensic system for {Windows} networks},
+  year      = {2008},
+  editor    = {Sushil Jajodia and Pierangela Samarati and Stelvio Cimato},
+  pages     = {653--667},
+  publisher = {Springer},
+  series    = {{IFIP}},
+  volume    = {278},
+  bibsource = {dblp computer science bibliography, https://dblp.org},
+  biburl    = {https://dblp.org/rec/conf/sec/BattistoniBPFM08.bib},
+  doi       = {10.1007/978-0-387-09699-5\_42},
+  groups    = {Related work},
+  url       = {https://doi.org/10.1007/978-0-387-09699-5_42},
+}
+
+@Manual{Sosnowski2016,
+  title  = {Bitlocker: {AES-XTS} (new encryption type)},
+  author = {Rafal Sosnowski},
+  note   = {Visited on 2021-09-01},
+  year   = {2016},
+  groups = {Other approaches},
+  url    = {https://docs.microsoft.com/en-gb/archive/blogs/dubaisec/bitlocker-aes-xts-new-encryption-type},
+}
+
+@Manual{Tpm2019,
+  title  = {Trusted Platform Module Library Specification, Family “2.0”, Level 00, Revision 01.59},
+  author = {{Trusted Computing Group}},
+  note   = {Level 00 Revision 01.59},
+  year   = {2019},
+  groups = {Other approaches},
 }
 
 @Comment{jabref-meta: databaseType:bibtex;}
