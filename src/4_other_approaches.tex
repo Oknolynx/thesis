@@ -165,10 +165,79 @@ Unmounting, too, works as usual: \texttt{umount <mount point>}. Relocking the pa
 
 \section{VeraCrypt}
 \label{chap:otherapproaches.veracrypt}
+\todo{short notice about the history of VeraCrypt (TrueCrypt and other ancestors)}
+
+\todo{\href{https://blog.quarkslab.com/resources/2016-10-17-audit-veracrypt/16-08-215-REP-VeraCrypt-sec-assessment.pdf}{VeraCrypt 1.18 Security Assessment}, \href{https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Publications/Studies/Veracrypt/Veracrypt.pdf?__blob=publicationFile&v=1}{BSI Security Evaluation of VeraCrypt}}
+
+Because VeraCrypt is an open source project, one can always just take a look at the code to see how everything works. Pleasantly, a lot of VeraCrypt is also described in its documentation\footnote{\label{fn:otherapproaches.veracrypt.documentation} In fact, the information provided in the documentation should suffice for most regular users. However, to understand how VeraCrypt works internally, one still needs to read the source code.} \cite{Veracrypt}. In this chapter, we mostly rely on the documentation, but we also peek into the source code to gain a deeper understanding of VeraCrypt's inner workings.
+
+\subsection{Relevant Technical and Cryptographic Details}
+\label{chap:otherapproaches.veracrypt.details}
+VeraCrypt stores all metadata in an encrypted header on disk. Because of the encryption, the header and the encrypted user data is indistinguishable from random bytes. This means a third party cannot tell a VeraCrypt volume apart from one that only contains random data\footnote{\label{fn:otherapproaches.veracrypt.deniability} This property is called plausible deniability. \cite{Veracrypt} mentions a volume that has been securely wiped as a plausible example for why a volume would only contain random data.}. The key to decrypt the header is derived from a password entered by the user. The master key, used to decrypt the user data stored on disk, is part of the header. This key is generated at volume creation and cannot be changed. It is however possible to change the password of the volume, achieved by decrypting the header and re-encrypting it using the key derived from the new password \cite{Veracrypt}.
+
+VeraCrypt supports different block ciphers, including AES, Serpent, and Twofish (see \cite{Ferguson2010} for more on them). It is also possible to cascade ciphers by first encrypting data using one cipher and then encrypting the ciphertext again, using another cipher. For example, VeraCrypt supports AES-Twofish encryption, which means that data is first encrypted with Twofish and then with AES. As for block cipher modes, only the XTS mode is supported \cite{Veracrypt}.
+
+Unlocking a volume always requires a password from the user. The user can also specify the parameters needed for the decryption of the header, including parameters for key derivation and the encryption scheme. If they are not specified, VeraCrypt tries all possible combinations of parameters. The first four bytes of a decrypted header are always ``VERA'' (in ASCII). The plaintext header also contains a checksum of its last 256 bytes. If both the first four bytes and the checksum match their respective expected value, decryption is considered successful \cite{Veracrypt}.
+
+Using an unlocked partition is practically equivalent to what is described in \autoref{chap:background.luks2.using}.
+
+\subsection{Peeking Into VeraCrypt's Source Code}
+\label{chap:otherapproaches.veracrypt.peeking}
+In this chapter we will take a look at the source code of the kernel driver that implements most of VeraCrypt's functionality. Our claims about these inner workings are supported by references to the source code. All file paths that do not start with \texttt{src/} are relative to the \texttt{src/Driver} subdirectory of the VeraCrypt source code. See \autoref{app:onlinereferences} for notes regarding the version of the inspected source code.
+
+The basic architecture of VeraCrypt is shown in \autoref{fig:otherapproaches.veracrypt.architecture}. When started, the user space executable installs a kernel driver using the \texttt{CreateService} Win32 function. VeraCrypt can operate in portable mode, which has the effect that the driver installation is only temporary\footnote{\label{fn:otherapproaches.veracrypt.createservice} See l. 4614f., 4355f. and 4455f. in \texttt{src/Common/Dlgcode.c}.}. This driver creates the so-called root device\footnote{\label{fn:otherapproaches.veracrypt.createroot} See l. 375 in \texttt{Ntdriver.c}.}, \texttt{\textbackslash Device\textbackslash VeraCrypt}, with which the user space program can communicate via IOCTLs.
+
+To unlock and mount a VeraCrypt volume, the user space application sends the \texttt{TC\_IOCTL\_MOUNT\_VOLUME} device control code to the root device. Its driver then creates a new device\footnote{\label{fn:otherapproaches.veracrypt.createdevice} See l. 2622f. and 4076 in \texttt{Ntdriver.c}.}, which will be used to mount the volume. All work of unlocking the volume and processing IRPs for the newly created device is done in its own thread\footnote{\label{fn:otherapproaches.veracrypt.volumethread} See l. 4123 and 3074f. in \texttt{Ntdriver.c}.}.
+
+\begin{figure}[htb!]
+	\center
+	\small
+	\begin{tikzpicture}[
+		rect/.append style={
+			inner sep=5pt,
+		},
+	]
+		\node[rect, fill=tPink]                      (exe)  at (0, 4) {\texttt{VeraCrypt.exe}};
+		\node[rect, fill=tOrng, rounded corners=4pt] (root) at (0, 1) {\texttt{\textbackslash Device\textbackslash VeraCrypt}};
+		\node[rect, fill=tYlow, rounded corners=4pt, text width=12.5em] (volx) at (8, 2) {\texttt{\textbackslash Device\textbackslash VeraCryptVolumeX}};
+		\node[rect, fill=tYlow, rounded corners=4pt, text width=12.5em] (voly) at (8, 1) {\texttt{\textbackslash Device\textbackslash VeraCryptVolumeY}};
+		\node[rect, fill=tYlow, rounded corners=4pt, text width=12.5em] (volz) at (8, 0) {\texttt{\textbackslash Device\textbackslash VeraCryptVol...}};
+
+		\node[anchor=east] at (10.7, 3.25) {\footnotesize User space};
+		\draw[dashed] (-2, 3) -- (10.75, 3);
+		\node[anchor=east] at (10.7, 2.75) {\footnotesize Kernel space};
+
+		\draw[arrow] (exe.south) -- (root.north) node[midway, anchor=east] {\textit{controls}};
+
+		\draw[arrow] (root.east) -- (voly.west) node[midway] (mid) {};
+		\draw[arrow] (mid.center) |- (volx.west);
+		\draw[arrow] (mid.center) |- (volz.west);
+		\draw[draw=none] (root.east) -- (mid) node[midway, anchor=south] {\textit{creates}};
+	\end{tikzpicture}
+	\caption[
+		VeraCrypt Architecture
+	]{
+		VeraCrypt Architecture. The user space application sends commands to the root device, \texttt{\textbackslash Device\textbackslash VeraCrypt}, via custom IOCTLs. One possible command is \texttt{TC\_IOCTL\_MOUNT\_VOLUME}, which instructs the root device to create a new device and mount a VeraCrypt volume using that device.
+	}
+	\label{fig:otherapproaches.veracrypt.architecture}
+\end{figure}
+
+The device for an unlocked volume holds a file handle to the device object for the encrypted volume (e.g. \texttt{\textbackslash Device\textbackslash HarddiskVolume6}). This is used for reading from and writing to the volume\footnote{\label{fn:otherapproaches.veracrypt.filehandle} See l. 280f. in \texttt{Ntvol.c} and l. 457, 520, and 345 in \texttt{EncryptedIoQueue.c}.}.
+
+Similar to \texttt{dm-crypt}, the VeraCrypt driver uses queues to manage incoming and pending IRPs. All I/O operations for a volume pass through up to three queues, each serviced by its own thread\footnote{\label{fn:otherapproaches.veracrypt.queuecreation} See l. 970f. in \texttt{EncryptedIoQueue.c}.}:
+\begin{descitemize}
+	\item[Main queue] All Read and Write IRPs are inserted into this ``encrypted I/O queue''. The thread responsible for this queue checks and adjusts the request parameters, if needed, and encrypts the data for write requests. Requests that were not rejected because of invalid parameters or other errors are then inserted into the I/O queue\footnote{\label{fn:otherapproaches.veracrypt.mainqueue} See l. 639 in \texttt{Ntdriver.c} and l. 886, 673f., 822f. and 844 in \texttt{EncryptedIoQueue.c}.}.
+	\item[I/O queue] This queue is responsible for initiating the I/O for incoming requests. It also adds read requests to the completion queue\footnote{\label{fn:otherapproaches.veracrypt.ioqueue} See l. 456f. and 499 in \texttt{EncryptedIoQueue.c}.}.
+	\item[Completion queue] This is where the decryption of successful read requests happens\footnote{\label{fn:otherapproaches.veracrypt.completionqueue} See l. 292f. in \texttt{EncryptedIoQueue.c}.}.
+\end{descitemize}
+
+\todo{\texttt{InvalidateVolumeKeys}, \texttt{InvalidateDriveFilterKeys}, \texttt{crypto\_eraseKeys}, and the \texttt{burn} macro}
+
+\todo{appendix on how to compile veracrypt in debug mode using VS 2019?}
 
 \section{BitLocker}
 \label{chap:otherapproaches.bitlocker}
-In this section we describe the basic principles of Microsoft's BitLocker volume encryption. This will not be as detailed as \autoref{chap:background.luks2}. If more details are of interest, \cite{Kornblum2009} is a quite comprehensive reference. Note however that since its publication, some changes have been made to BitLocker: Windows 10 build 1511 introduced a new mode that uses the XTS block cipher mode, and the optional Elephant Diffuser was removed in Windows 8 \cite{Sosnowski2016}. Because the basics did not change, we still mostly rely on the findings presented in \cite{Kornblum2009}.
+\todo{better introduction, e.g. ``Microsoft has implemented... ships with more expensive editions of Windows...} In this section we describe the basic principles of Microsoft's BitLocker volume encryption. This will not be as detailed as \autoref{chap:background.luks2}. If more details are of interest, \cite{Kornblum2009} is a quite comprehensive reference. Note however that since its publication, some changes have been made to BitLocker: Windows 10 build 1511 introduced a new mode that uses the XTS block cipher mode, and the optional Elephant Diffuser was removed in Windows 8 \cite{Sosnowski2016}. Because the basics did not change, we still mostly rely on the findings presented in \cite{Kornblum2009}.
 
 We will also look at \todo{some implementation} details by decompiling the source of the kernel driver that implements BitLocker's functionality.
 %
@@ -199,6 +268,8 @@ The FVEK is always 512 bits long. BitLocker supports 128 and 256 bit keys for da
 \end{itemize}
 
 The mentioned \emph{sector key} is XORed with data to be written to disk before the encryption \cite{Kornblum2009}. The algorithms available for encryption are AES-CBC and AES-XTS (the latter since Windows 10, build 1511) \cite{Sosnowski2016}.
+
+Please refer to \autoref{chap:background.luks2.using} for the usage of an unlocked partition. Most of what is described there also applies to BitLocker.
 
 \subsection{Decompiling Parts of the BitLocker Kernel Driver}
 \label{chap:otherapproaches.bitlocker.decompiling}
