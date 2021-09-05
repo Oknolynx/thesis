@@ -1,12 +1,41 @@
 \chapter{Design and Implementation of Our Approach}
 \label{chap:ourapproach}
+\todo{This chapter lays out the design and architecture of our Windows kernel driver.}\\
+\todo{Where there were multiple ways to do things, we will provide the reasons behind our choice.}\\
+\todo{This includes the choice for WDM as the used framework for the driver.}
 
-\section{Failed Attempts}
-\label{chap:ourapproach.failed}
-\todo{FilterManager framework, mention fsrec driver and debugging}
+\section{Rejected Driver Frameworks}
+\label{chap:ourapproach.rejected}
+As already mentioned in \autoref{chap:background.kerneldriver.wdm}, there are different frameworks to choose from when writing a driver. In this section, we will discuss some other frameworks that we ultimately did not use for our driver, even though we implemented an early prototype using one of them.
 
+\subsection{The Filter Manager}
+\label{chap:ourapproach.rejected.fltmgr}
+The filter manager is a kernel driver that ships with Windows, implementing commonly required functionality to simplify the development of third-party file system filter drivers. Filter drivers that make use of the filter manager are called \emph{minifilter drivers}. They can, among other things, filter IRPs by registering a pre- and/or postoperation callback routine. These are the equivalents to WDM's dispatch and completion routines. Just like the I/O manager for WDM drivers, the filter manager is responsible for calling a minifilter's appropriate callback routine when an IRP arrives \cite{Fltmgr}.
+
+Also similar to WDM drivers, the order in which an IRP passes through multiple minifilters is deterministic and configurable. It depends on the minifilters' \emph{altitude}, which is a value between 40,000 and 429,999\footnote{\label{fn:ourapproach.rejected.altitudevalues} Lower altitudes are also possible, but are reserved by Windows for internal use.}. For preoperation callbacks, a driver with a higher altitude is called before a driver with a lower altitude, and vice versa for postoperation callbacks. There are pre-defined groups of altitude values, called \emph{load order groups}. Examples are the Anti-Virus group (using an altitude between 320,000 and 329,999) and the Encryption group (140,000 to 149,999). To ensure that all minifilters have an appropriate altitude, Microsoft is responsible for assigning altitude values\footnote{\label{fn:ourapproach.rejected.assignedaltitudes} At \url{https://docs.microsoft.com/en-us/windows-hardware/drivers/ifs/allocated-altitudes} one can browse a list of all currently assigned altitudes.} \cite{Fltmgr}.
+
+During the development process of our driver, we implemented a first prototype which used the filter manager. It worked to some extent, but ultimately it was not fit for its purpose. The architecture of an I/O stack that includes the filter manager shown in \autoref{fig:ourapproach.rejected.fltmgr} explains why this is the case: the filter manager and therefore all minifilters always sit above the file system driver. LUKS2 encryption however sits below the file system, meaning despite our minifilter the file system driver can only read the encrypted data. We did not notice this during development because we used raw I/O to test our driver. This means that we created a handle to a path like \texttt{\textbackslash Device\textbackslash HarddiskVolume6} and performed I/O using that. Interestingly, in this case our minifilter successfully decrypted reads from the volume. But the file system driver still could not recognize the file system. 
+
+\begin{figure}
+	\center
+	\small
+	\todo{figure from \href{https://docs.microsoft.com/en-us/windows-hardware/drivers/ifs/filter-manager-concepts}{here}}
+	\caption[
+		Example of a filter manager I/O stack
+	]{
+		Example of a filter manager I/O stack \cite{Fltmgr}. \todo{todo}
+	}
+	\label{fig:ourapproach.rejected.fltmgr}
+\end{figure}
+
+We figured out why the decrypted file system was not recognized by Windows through debugging in WinDbg. Online research yielded the name of the driver responsible for recognizing FAT filesystems (our test LUKS2 volume contained a FAT32 filesystem): \texttt{fsrec.sys}. Using information from unofficial online documentation\footnote{\label{fn:ourapproach.rejected.fsrecdoc} \url{http://www.codewarrior.cn/ntdoc/win2k/fsrec/index.htm}}, we set a breakpoint at \texttt{fsrec}'s \texttt{IsFatVolume} routine. It receives the first sector of a volume and determines whether this matches the format of a FAT boot sector. When dumping the value of this parameter in WinDbg, it became clear that this routine received the encrypted first sector of the LUKS2 volume, consequently (and correctly) classifying it as a non-FAT volume.
+
+\subsection{The Windows Driver Frameworks}
+\label{chap:ourapproach.rejected.wdf}
 \todo{Mention KMDF / UMDF and why we didn't use that if not already done in earlier chapter}
 
+\subsection{Other User Space Frameworks}
+\label{chap:ourapproach.rejected.other}
 \todo{Mention other user space fs libraries, e.g. \url{https://github.com/dokan-dev/dokany}?}
 
 \section{The Final WDM Driver}
@@ -19,7 +48,8 @@
 
 \todo{Also screenshots from the registry showing the modified volume class' lower filters?}
 
-\todo{compare to architecture of reference implementation, as promised in \autoref{chap:otherapproaches.linux}}
+\todo{compare to architecture of reference implementation, as promised in \autoref{chap:otherapproaches.linux}}\\
+\todo{also compare to VeraCrypt and BitLocker}
 
 \todo{explain ``by the way''? or move to \autoref{chap:background.kerneldriver.concepts}}
 \begin{itemize}

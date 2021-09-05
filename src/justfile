@@ -2,7 +2,8 @@
 set shell := ["powershell.exe", "-c"]
 
 build:
-    pdflatex --interaction=batchmode --output-directory=..\bin -shell-escape .\thesis.tex
+    # the first run of pdflatex is only needed to generate the .aux file for bibtex, don't run it if the file already exists
+    (Test-Path -Path ../bin/thesis.aux) -or (pdflatex --interaction=batchmode --output-directory=..\bin -shell-escape .\thesis.tex) | out-null
     bibtex ..\bin\thesis.aux
     pdflatex --interaction=batchmode --output-directory=..\bin -shell-escape .\thesis.tex
     pdflatex --interaction=batchmode --output-directory=..\bin -shell-escape .\thesis.tex
