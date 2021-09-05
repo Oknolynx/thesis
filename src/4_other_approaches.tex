@@ -1,6 +1,6 @@
 \chapter{Other Approaches}
 \label{chap:otherapproaches}
-In this section, we describe both the Linux reference implementation of LUKS2 and the two disk encryption technologies that are featured in the performance comparison in \autoref{chap:performance}.
+In this chapter, we describe both the Linux reference implementation of LUKS2 and the two disk encryption technologies that are featured in the performance comparison in \autoref{chap:performance}.
 
 \section{Linux Kernel Implementation of LUKS2}
 \label{chap:otherapproaches.linux}
@@ -165,7 +165,7 @@ Unmounting, too, works as usual: \texttt{umount <mount point>}. Relocking the pa
 
 \section{VeraCrypt}
 \label{chap:otherapproaches.veracrypt}
-\todo{short notice about the history of VeraCrypt (TrueCrypt and other ancestors)}
+VeraCrypt is an open source disk encryption program that is based on the discontinued TrueCrypt project.
 
 \todo{\href{https://blog.quarkslab.com/resources/2016-10-17-audit-veracrypt/16-08-215-REP-VeraCrypt-sec-assessment.pdf}{VeraCrypt 1.18 Security Assessment}, \href{https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Publications/Studies/Veracrypt/Veracrypt.pdf?__blob=publicationFile&v=1}{BSI Security Evaluation of VeraCrypt}}
 
@@ -231,15 +231,15 @@ Similar to \texttt{dm-crypt}, the VeraCrypt driver uses queues to manage incomin
 	\item[Completion queue] This is where the decryption of successful read requests happens\footnote{\label{fn:otherapproaches.veracrypt.completionqueue} See l. 292f. in \texttt{EncryptedIoQueue.c}.}.
 \end{descitemize}
 
-\todo{\texttt{InvalidateVolumeKeys}, \texttt{InvalidateDriveFilterKeys}, \texttt{crypto\_eraseKeys}, and the \texttt{burn} macro}
+When no longer needed, sensitive data in memory, such as a volume's password, is overwritten with zeros. This is done using the \texttt{RtlSecureZeroMemory} function\footnote{\label{fn:otherapproaches.veracrypt.mainqueue} See l. 400 in \texttt{src/Common/Tcdefs.h} and l. 2647f. in \texttt{Ntdriver.c}.}, which is guaranteed not to be optimized out by the compiler \cite{Wdk}. 
 
 \todo{appendix on how to compile veracrypt in debug mode using VS 2019?}
 
 \section{BitLocker}
 \label{chap:otherapproaches.bitlocker}
-\todo{better introduction, e.g. ``Microsoft has implemented... ships with more expensive editions of Windows...} In this section we describe the basic principles of Microsoft's BitLocker volume encryption. This will not be as detailed as \autoref{chap:background.luks2}. If more details are of interest, \cite{Kornblum2009} is a quite comprehensive reference. Note however that since its publication, some changes have been made to BitLocker: Windows 10 build 1511 introduced a new mode that uses the XTS block cipher mode, and the optional Elephant Diffuser was removed in Windows 8 \cite{Sosnowski2016}. Because the basics did not change, we still mostly rely on the findings presented in \cite{Kornblum2009}.
+Since Windows Vista, the professional versions of Windows (i.e. Professional and Enterprise) already ship with a proprietary volume encryption functionality, called BitLocker. This chapter describes the basic principles of BitLocker. It will not be as detailed as \autoref{chap:background.luks2}. If more details are of interest, \cite{Kornblum2009} is a quite comprehensive reference. Note however that since its publication, some changes have been made to BitLocker: Windows 10 build 1511 introduced a new mode that uses the XTS block cipher mode, and the optional Elephant Diffuser was removed in Windows 8 \cite{Sosnowski2016}. Because the basics did not change, we still mostly rely on the findings presented in \cite{Kornblum2009}.
 
-We will also look at \todo{some implementation} details by decompiling the source of the kernel driver that implements BitLocker's functionality.
+We will also look at some implementation details by decompiling the source of the kernel driver that implements BitLocker's functionality.
 %
 %\todo{sources:}
 %\begin{itemize}
@@ -254,7 +254,7 @@ BitLocker has three kinds of keys that are needed to unlock and use an encrypted
 \begin{descitemize}
 	\item[FVEK] the \emph{Full Volume Encryption Key (FVEK)} is used to encrypt the data stored on the volume (this is what LUKS2 calls the master key).
 	\item[VMK] the \emph{Volume Master Key (VMK)} is used to encrypt the FVEK so it can be safely stored in the volume's metadata.
-	\item[External] this is a key used to encrypt the VMK so it, too, can be safely stored in the volume's metadata. An external key can be stored on an external USB device, released by a \emph{Trusted Platform Module (TPM)}\footnote{\label{fn:otherapproaches.bitlocker.tpm} See e.g. their specification \cite{Tpm2019} for more information on TPMs.}, or entered by the user in the form of a password. It is also possible to store an external key directly in the volume's metadata, effectively disabling BitLocker, but without storing the data in plaintext form\footnote{\label{fn:otherapproaches.bitlocker.doormat} \cite{Kornblum2009} has a nice metaphor for this: ``Like leaving a house key under the doormat, the volume is still protected, but by knowing where to look it's trivial to bypass the protection.''}.
+	\item[External] this is a key used to encrypt the VMK so it, too, can be safely stored in the volume's metadata. An external key can be stored on an external USB device, released by a \emph{Trusted Platform Module (TPM)}\footnote{\label{fn:otherapproaches.bitlocker.tpm} See e.g. their specification \cite{Tpm2019} for more information on TPMs. They are not really relevant for this chapter.}, or entered by the user in the form of a password. It is also possible to store an external key directly in the volume's metadata, effectively disabling BitLocker, but without storing the data in plaintext form\footnote{\label{fn:otherapproaches.bitlocker.doormat} \cite{Kornblum2009} has a nice metaphor for this: ``Like leaving a house key under the doormat, the volume is still protected, but by knowing where to look it's trivial to bypass the protection.''}.
 \end{descitemize}
 
 Similarly to LUKS2, BitLocker stores multiple encrypted versions of the VMK on disk, each using a different external key for the encryption. This means that the VMK can be decrypted using any one of the existing external keys. An example where this is useful is when the TPM detects a system modification and does not release the key: the plaintext VMK can then be obtained using a recovery password, which is always created when formatting the volume. Because the VMK can be used to decrypt the FVEK, which in turn decrypts the data stored on disk, one of the available external keys is all that is needed for unlocking a volume \cite{Kornblum2009}.
@@ -269,7 +269,7 @@ The FVEK is always 512 bits long. BitLocker supports 128 and 256 bit keys for da
 
 The mentioned \emph{sector key} is XORed with data to be written to disk before the encryption \cite{Kornblum2009}. The algorithms available for encryption are AES-CBC and AES-XTS (the latter since Windows 10, build 1511) \cite{Sosnowski2016}.
 
-Please refer to \autoref{chap:background.luks2.using} for the usage of an unlocked partition. Most of what is described there also applies to BitLocker.
+Refer to \autoref{chap:background.luks2.using} for the usage of an unlocked partition. Most of what is described there also applies to BitLocker.
 
 \subsection{Decompiling Parts of the BitLocker Kernel Driver}
 \label{chap:otherapproaches.bitlocker.decompiling}
@@ -298,8 +298,8 @@ Looking at \texttt{cryptsetup}'s implementation of its support for BitLocker vol
 	\caption[
 		Assembly and disassembly of parts of the \texttt{DriverEntry} function
 	]{
-		Assembly and disassembly of parts of the \texttt{DriverEntry} function (Screenshot from \href{https://www.ghidra-sre.org}{Ghidra}). Shown here is the definition of which function of the driver will be called when an IRP passes through it. These are called dispatch routines. The driver has to specify the different dispatch routine for each IRP major function (e.g. one for Read, one for Write, and one for all the other 26 major functions, respectively). \todo{\autoref{chap:ourapproach.final.init} describes this initialization process in more detail.}\\
-		\texttt{fvevol.sys} only defines specific dispatch routines for the Create, Close, Cleanup, Read, Write, DeviceControl, Power, and PnP major functions. All other major functions use the \texttt{FveFilterSkip} routine, which usually just forwards the IRP to the next driver in the stack (except for some error cases, where it fails the request).
+		Assembly and disassembly of parts of the \texttt{DriverEntry} function (Screenshot from \href{https://www.ghidra-sre.org}{Ghidra}). Shown here is the definition of which function of the driver will be called when an IRP passes through it. These are called dispatch routines. The driver has to specify the different dispatch routine for each IRP major function. \todo{See \autoref{chap:ourapproach.final.init} for more details on this initialization process.}\\
+		\texttt{fvevol.sys} only defines specific dispatch routines for the Create, Close, Cleanup, Read, Write, DeviceControl, Power, and PnP major functions. All other major functions use the generic \texttt{FveFilterSkip} routine, which usually just forwards the IRP to the next driver in the stack (except for some error cases, where it fails the request).
 	}
 	\label{fig:otherapproaches.bitlocker.driverentry}
 \end{figure}

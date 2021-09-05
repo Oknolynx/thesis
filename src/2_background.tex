@@ -1,5 +1,6 @@
 \chapter{Background}
 \label{chap:background}
+\todo{todo?}
 
 \section{LUKS2 Disk Encryption}
 \label{chap:background.luks2}
@@ -354,12 +355,11 @@ All this theory may sound complicated, but in \autoref{chap:ourapproach.final.de
 
 \section{Introduction to Windows Kernel Driver Development}
 \label{chap:background.kerneldriver}
-\todo{This section gives an introduction on the development of Windows kernel drivers and}\\\todo{important related background information and concepts.}
+Writing a Windows kernel driver is a non-trivial endeavour. Therefore, this chapter will describe relevant parts of Windows' internal architecture, answer the question of what a kernel driver is in the first place, and introduce the most important concepts for writing kernel drivers.
 
 \subsection{Structure and Hierarchy of the Windows Operating System}
 \label{chap:background.kerneldriver.oshierarchy}
 % possible further content for this or later sections
-% - WinDbg (or in a later (sub)section) (page 38)
 % - DLLs?
 % - processes? (page 8) threads? (page 18)
 First, we will introduce some basic concepts of the Windows operating system that will be relevant in the following sections. Please note that we will focus on Windows 10 running on the x64 architecture, as that is the target of our driver. Some details may be different in other versions of Windows, though most information should still be valid.
@@ -918,7 +918,7 @@ There are two official programs for kernel debugging, kd and WinDbg. They are es
 There are different ways to use WinDbg \cite{Yosifovich2017}:
 \begin{itemize}
 	\item as a debugger for user mode programs. It can be used for viewing and changing the contents of the program's memory, setting breakpoints, and other common debugging techniques. WinDbg can also attach to an already running process.
-	\item to view a crash dump file that Windows created during a system crash\footnote{\label{fn:background.kerneldriver.crashdump} If enabled, the dump file is usually located at \texttt{C:\textbackslash Windows\textbackslash MEMORY.DMP}.}. This way one can find out more about what exactly caused the crash. The available commands are a subset of what would have been available if WinDbg had been debugging the operating system when the crash happened. For example, the call stack of the function that caused the crash can be displayed. \todo{say more explicitly what doesn't work in this mode}
+	\item to view a crash dump file that Windows created during a system crash. This contains parts of the RAM contents at the time of a crash\footnote{\label{fn:background.kerneldriver.crashdump} If enabled, the dump file is usually located at \texttt{C:\textbackslash Windows\textbackslash MEMORY.DMP}. It can also be configured which parts of the RAM shall be included in the file, e.g. all used physical memory or only all used kernel memory.}. Using this, one can find out more about what exactly caused the crash. The available commands are a subset of what would have been available if WinDbg had been debugging the operating system when the crash happened. For example, the call stack of the function that caused the crash can be displayed. Everything that involves running code or reading and writing from or to certain locations, e.g. I/O ports or some CPU registers, is not possible in this mode.
 	\item as a local kernel mode debugger. If booted in debug mode, WinDbg can attach to a currently running instance of Windows. Only a subset of the normally available commands can be used, and some advanced debugging such as setting breakpoints and dumping memory do not work. An alternative for local kernel debugging is the Sysinternals LiveKd program. This simulates a crash dump file using the contents of physical memory, and in contrast to WinDbg, it can dump memory.
 	\item as a remote kernel mode debugger. This is the mode of operation with the most possibilities, but also the one that is the most complicated and expensive to set up. It requires two computers, a target computer, running the OS to be debugged, and a host computer, that uses WinDbg to debug the target. Because WinDbg does not run under the OS that is being debugged, the target computer can be completely halted and the current system state can be examined. The connection between the two computers can be via USB or the local network\footnote{\label{background.kerneldriver.vmdebugging} Debugging via network can also be used to debug a virtual machine, if the hardware for a second real computer is not available. See \href{https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/setting-up-network-debugging-of-a-virtual-machine-host}{the Windows Debugging Tools documentation} for more.}.
 \end{itemize}
