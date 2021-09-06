@@ -14,33 +14,75 @@ The filter manager is a kernel driver that ships with Windows, implementing comm
 
 Also similar to WDM drivers, the order in which an IRP passes through multiple minifilters is deterministic and configurable. It depends on the minifilters' \emph{altitude}, which is a value between 40,000 and 429,999\footnote{\label{fn:ourapproach.rejected.altitudevalues} Lower altitudes are also possible, but are reserved by Windows for internal use.}. For preoperation callbacks, a driver with a higher altitude is called before a driver with a lower altitude, and vice versa for postoperation callbacks. There are pre-defined groups of altitude values, called \emph{load order groups}. Examples are the Anti-Virus group (using an altitude between 320,000 and 329,999) and the Encryption group (140,000 to 149,999). To ensure that all minifilters have an appropriate altitude, Microsoft is responsible for assigning altitude values\footnote{\label{fn:ourapproach.rejected.assignedaltitudes} At \url{https://docs.microsoft.com/en-us/windows-hardware/drivers/ifs/allocated-altitudes} one can browse a list of all currently assigned altitudes.} \cite{Fltmgr}.
 
-During the development process of our driver, we implemented a first prototype which used the filter manager. It worked to some extent, but ultimately it was not fit for its purpose. The architecture of an I/O stack that includes the filter manager shown in \autoref{fig:ourapproach.rejected.fltmgr} explains why this is the case: the filter manager and therefore all minifilters always sit above the file system driver. LUKS2 encryption however sits below the file system, meaning despite our minifilter the file system driver can only read the encrypted data. We did not notice this during development because we used raw I/O to test our driver. This means that we created a handle to a path like \texttt{\textbackslash Device\textbackslash HarddiskVolume6} and performed I/O using that. Interestingly, in this case our minifilter successfully decrypted reads from the volume. But the file system driver still could not recognize the file system. 
+During the development process of our driver, we implemented a first prototype which used the filter manager. It worked to some extent, but ultimately it was not fit for its purpose. The architecture of an I/O stack that includes the filter manager shown in \autoref{fig:ourapproach.rejected.fltmgr} explains why this is the case: the filter manager and therefore all minifilters always sit above the file system driver. LUKS2 encryption however sits below the file system, meaning that despite our minifilter the file system driver can only read the encrypted data. We did not notice this during development because we used raw I/O to test our driver. This means that we created a handle to a path like \texttt{\textbackslash Device\textbackslash HarddiskVolume6} and performed I/O using that. Interestingly, in this case our minifilter successfully decrypted reads from the volume. %But the file system driver still could not recognize the file system. 
 
 \begin{figure}
 	\center
 	\small
-	\todo{figure from \href{https://docs.microsoft.com/en-us/windows-hardware/drivers/ifs/filter-manager-concepts}{here}}
+	\begin{tikzpicture}
+		\node at (2, 8.7) (usr) {User request for file I/O};
+
+		\node[anchor=east] at (9.45, 8.45) {\footnotesize User mode};
+		\draw[dashed] (-0.5, 8.2) -- (9.5, 8.2);
+		\node[anchor=east] at (9.45, 7.95) {\footnotesize Kernel mode};
+
+		\node[rect, fill=tPink, from={0, 6.4 to 4, 7.7}] (io) {I/O manager};
+		\node[rect, fill=tOrng, from={0, 3.2 to 4, 4.5}] (flt) {Filter manager};
+		\node[rect, fill=tGren, from={0, 0 to 4, 1.3}] (fs) {File system driver};
+
+		\node[rect, fill=tYlow, from={5.5, 4.7 to 8.5, 6}] (mfa) {\makecell{Minifilter A\\\footnotesize Altitude 365000}};
+		\node[rect, fill=tYlow, from={5.5, 3.2 to 8.5, 4.5}] (mfb) {\makecell{Minifilter B\\\footnotesize Altitude 325000}};
+		\node[rect, fill=tYlow, from={5.5, 1.7 to 8.5, 3}] (mfc) {\makecell{Minifilter C\\\footnotesize Altitude 305000}};
+
+		\node[rect, fill=tLblu, from={5, 0 to 9, 1.3}] (sto) {Storage device stack};
+
+		\draw[arrow] (usr.south) -> (io.north);
+		\draw[arrow] (io.south) -> (flt.north);
+		\draw[<->] (flt.east) + (0, 0.325) -- +(0.75, 0.325) |- (mfa.west);
+		\draw[<->] (flt.east) -- +(0.75, 0) |- (mfb.west);
+		\draw[<->] (flt.east) + (0, -0.325) -- +(0.75, -0.325) |- (mfc.west);
+		\draw[arrow] (flt.south) -> (fs.north);
+		\draw[arrow] (fs.east) -> (sto.west);
+	\end{tikzpicture}
 	\caption[
 		Example of a filter manager I/O stack
 	]{
-		Example of a filter manager I/O stack \cite{Fltmgr}. \todo{todo}
+		Example of a filter manager I/O stack (modified after \cite{Fltmgr}). A user initiates an I/O request, which the I/O manager receives first and forwards to the file system. The filter manager intercepts the request and lets it pass through the registered minifilters, in order according to their altitude (their altitude places them in the following groups, ordered from A to C: Activity Monitor, Anti-Virus, and Replication). After this, the file system driver processes the request and translates it from file-based to something that a driver in the storage device's stack can understand. Finally, this device stack receives the request from the file system driver.
 	}
 	\label{fig:ourapproach.rejected.fltmgr}
 \end{figure}
 
-We figured out why the decrypted file system was not recognized by Windows through debugging in WinDbg. Online research yielded the name of the driver responsible for recognizing FAT filesystems (our test LUKS2 volume contained a FAT32 filesystem): \texttt{fsrec.sys}. Using information from unofficial online documentation\footnote{\label{fn:ourapproach.rejected.fsrecdoc} \url{http://www.codewarrior.cn/ntdoc/win2k/fsrec/index.htm}}, we set a breakpoint at \texttt{fsrec}'s \texttt{IsFatVolume} routine. It receives the first sector of a volume and determines whether this matches the format of a FAT boot sector. When dumping the value of this parameter in WinDbg, it became clear that this routine received the encrypted first sector of the LUKS2 volume, consequently (and correctly) classifying it as a non-FAT volume.
+We figured out why the decrypted file system was not recognized by Windows through debugging with WinDbg. Online research yielded the name of the driver responsible for recognizing FAT filesystems (our test LUKS2 volume contained a FAT32 filesystem): \texttt{fsrec.sys}. Using information from unofficial online documentation\footnote{\label{fn:ourapproach.rejected.fsrecdoc} \url{http://www.codewarrior.cn/ntdoc/win2k/fsrec/index.htm}}, we set a breakpoint at \texttt{fsrec}'s \texttt{IsFatVolume} routine. It receives the first sector of a volume and determines whether this matches the format of a FAT boot sector. When hitting the breakpoint and dumping the value of the function's parameter in WinDbg, it became clear that this routine received the encrypted first sector of the LUKS2 volume, consequently (and correctly) classifying it as a non-FAT volume.
+
+See the official documentation \cite{Fltmgr} for more information on the filter manager and minifilter drivers.
+
+\todo{\href{https://docs.microsoft.com/en-us/windows-hardware/drivers/ifs/how-file-system-filter-drivers-are-different-from-device-drivers}{this} and \href{https://docs.microsoft.com/en-us/windows-hardware/drivers/ifs/how-file-system-filter-drivers-are-similar-to-device-drivers}{this}?}
 
 \subsection{The Windows Driver Frameworks}
 \label{chap:ourapproach.rejected.wdf}
-\todo{Mention KMDF / UMDF and why we didn't use that if not already done in earlier chapter}
+As already mentioned in \autoref{chap:background.kerneldriver.wdm}, another possibility to develop a driver are the Kernel Mode Driver Framework (KMDF) and User Mode Driver Framework (UMDF), together called the Windows Driver Frameworks (WDF). These try to simplify things by abstracting away some of the details that WDM drivers have to care about. The basic principles (e.g. IRP-based I/O) remain the same \cite{Yosifovich2017}.
+
+We decided against using the UMDF out of performance concerns; as the framework's name suggests, UMDF drivers run in user mode. This has certain advantages, such as increased system stability. But most of the I/O ecosystem runs in kernel mode, which means that switches between kernel and user mode are necessary when an I/O driver runs in user mode. These induce latency, together with some additional communication with the kernel \cite{Yosifovich2017}.
+
+KMDF does not have this problems, but there were other factors that led to our decision against it:
+\begin{itemize}
+	\item We had previously tried another framework that simplified things though abstraction (see \autoref{chap:ourapproach.rejected.fltmgr}) and it had not worked. Therefore it seemed safer to do all the work ourselves, and in return be sure that the framework will not be a reason for failure.
+	\item By default, KMDF filter drivers pass all received IRPs to the next driver in the stack \cite{Wdf}. However, our planned approach was as follows: don't pass through anything at first, and then gradually during the development process allow more and more requests to pass through. This is still possible with the KMDF, but more work than for a WDM driver.
+	\item One of the biggest selling points of using the KMDF is that it handles PnP and Power IRPs for the driver. These are not really relevant to filter drivers, though (see \todo{\autoref{chap:ourapproach.final.otherrequests}} for how our final driver handles them). Therefore we would not gain that much by sacrificing total control for reduced complexity, because the hidden complexity is not that relevant in the first place.
+	\item Finally, writing a WDM driver requires a more complete understanding of how the kernel's IRP-based I/O system works. We wanted to learn as much as possible, and for this purpose WDM seemed the better fit.
+\end{itemize}
+
+Now that our WDM driver is finished, it would be interesting to compare it to an equivalent that was written using the KMDF, both its architecture and performance. This is left as an exercise to the curious reader; \autoref{chap:ourapproach.final} should be a good starting point.
+
+\cite{Yosifovich2017} contains detailed information on the architecture and inner workings of both the KMDF and UMDF. The official documentation \cite{Wdf} is also a valuable source of information.
 
 \subsection{Other User Space Frameworks}
 \label{chap:ourapproach.rejected.other}
-\todo{Mention other user space fs libraries, e.g. \url{https://github.com/dokan-dev/dokany}?}
+There also exist third-party user mode libraries for developing file system drivers, e.g. \url{https://github.com/billziss-gh/winfsp} or \url{https://github.com/dokan-dev/dokany}. However, these probably suffer the same drawbacks as UMDF drivers, and were therefore rejected.
 
 \section{The Final WDM Driver}
 \label{chap:ourapproach.final}
-\todo{Why WDM?}
+After deciding against the frameworks mentioned in the previous section, only WDM was left, which we thus settled for. This section will describe our approach and our considerations during its design in detail.
 
 \subsection{Architecture}
 \label{chap:ourapproach.final.architecture}
