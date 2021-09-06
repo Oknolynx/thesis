@@ -192,11 +192,7 @@ To unlock and mount a VeraCrypt volume, the user space application sends the \te
 \begin{figure}[htb!]
 	\center
 	\small
-	\begin{tikzpicture}[
-		rect/.append style={
-			inner sep=5pt,
-		},
-	]
+	\begin{tikzpicture}
 		\node[rect, fill=tPink]                      (exe)  at (0, 4) {\texttt{VeraCrypt.exe}};
 		\node[rect, fill=tOrng, rounded corners=4pt] (root) at (0, 1) {\texttt{\textbackslash Device\textbackslash VeraCrypt}};
 		\node[rect, fill=tYlow, rounded corners=4pt, text width=12.5em] (volx) at (8, 2) {\texttt{\textbackslash Device\textbackslash VeraCryptVolumeX}};
@@ -231,7 +227,7 @@ Similar to \texttt{dm-crypt}, the VeraCrypt driver uses queues to manage incomin
 	\item[Completion queue] This is where the decryption of successful read requests happens\footnote{\label{fn:otherapproaches.veracrypt.completionqueue} See l. 292f. in \texttt{EncryptedIoQueue.c}.}.
 \end{descitemize}
 
-When no longer needed, sensitive data in memory, such as a volume's password, is overwritten with zeros. This is done using the \texttt{RtlSecureZeroMemory} function\footnote{\label{fn:otherapproaches.veracrypt.mainqueue} See l. 400 in \texttt{src/Common/Tcdefs.h} and l. 2647f. in \texttt{Ntdriver.c}.}, which is guaranteed not to be optimized out by the compiler \cite{Wdk}. 
+When no longer needed, sensitive data in memory, such as a volume's password, is overwritten with zeros. This is done using the \texttt{RtlSecureZeroMemory} function\footnote{\label{fn:otherapproaches.veracrypt.zeromem} See l. 400 in \texttt{src/Common/Tcdefs.h} and l. 2647f. in \texttt{Ntdriver.c}.}, which is guaranteed not to be optimized out by the compiler \cite{Wdk}. 
 
 \todo{appendix on how to compile veracrypt in debug mode using VS 2019?}
 
@@ -271,7 +267,7 @@ The mentioned \emph{sector key} is XORed with data to be written to disk before 
 
 Refer to \autoref{chap:background.luks2.using} for the usage of an unlocked partition. Most of what is described there also applies to BitLocker.
 
-\subsection{Decompiling Parts of the BitLocker Kernel Driver}
+\subsection{Decompiling Parts of BitLocker's Kernel Driver}
 \label{chap:otherapproaches.bitlocker.decompiling}
 In this section we will take a look at parts of \texttt{fvevol.sys}, which is the ``BitLocker Drive Encryption Driver'' (see \autoref{fig:otherapproaches.bitlocker.fvevol}). \texttt{fvevol.sys} has already been mentioned in \autoref{fig:background.kerneldriver.devicestack} and \autoref{fig:background.kerneldriver.registry}. From there it is apparent that it is a lower filter driver that gets loaded for all volumes.
 

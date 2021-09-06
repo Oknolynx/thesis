@@ -26,23 +26,23 @@ During the development process of our driver, we implemented a first prototype w
 		\draw[dashed] (-0.5, 8.2) -- (9.5, 8.2);
 		\node[anchor=east] at (9.45, 7.95) {\footnotesize Kernel mode};
 
-		\node[rect, fill=tPink, from={0, 6.4 to 4, 7.7}] (io) {I/O manager};
+		\node[rect, fill=tPink, from={0, 6.4 to 4, 7.7}] (io)  {I/O manager};
 		\node[rect, fill=tOrng, from={0, 3.2 to 4, 4.5}] (flt) {Filter manager};
-		\node[rect, fill=tGren, from={0, 0 to 4, 1.3}] (fs) {File system driver};
+		\node[rect, fill=tGren, from={0, 0   to 4, 1.3}] (fs)  {File system driver};
 
-		\node[rect, fill=tYlow, from={5.5, 4.7 to 8.5, 6}] (mfa) {\makecell{Minifilter A\\\footnotesize Altitude 365000}};
-		\node[rect, fill=tYlow, from={5.5, 3.2 to 8.5, 4.5}] (mfb) {\makecell{Minifilter B\\\footnotesize Altitude 325000}};
-		\node[rect, fill=tYlow, from={5.5, 1.7 to 8.5, 3}] (mfc) {\makecell{Minifilter C\\\footnotesize Altitude 305000}};
+		\node[rect, fill=tYlow, from={5.5, 4.7 to 8.5, 6}]   (mfa) {Minifilter A\\\footnotesize Altitude 365000};
+		\node[rect, fill=tYlow, from={5.5, 3.2 to 8.5, 4.5}] (mfb) {Minifilter B\\\footnotesize Altitude 325000};
+		\node[rect, fill=tYlow, from={5.5, 1.7 to 8.5, 3}]   (mfc) {Minifilter C\\\footnotesize Altitude 305000};
 
 		\node[rect, fill=tLblu, from={5, 0 to 9, 1.3}] (sto) {Storage device stack};
 
 		\draw[arrow] (usr.south) -> (io.north);
-		\draw[arrow] (io.south) -> (flt.north);
-		\draw[<->] (flt.east) + (0, 0.325) -- +(0.75, 0.325) |- (mfa.west);
-		\draw[<->] (flt.east) -- +(0.75, 0) |- (mfb.west);
+		\draw[arrow] (io.south)  -> (flt.north);
+		\draw[<->] (flt.east) + (0, 0.325)  -- +(0.75, 0.325)  |- (mfa.west);
+		\draw[<->] (flt.east)               -- +(0.75, 0)      |- (mfb.west);
 		\draw[<->] (flt.east) + (0, -0.325) -- +(0.75, -0.325) |- (mfc.west);
 		\draw[arrow] (flt.south) -> (fs.north);
-		\draw[arrow] (fs.east) -> (sto.west);
+		\draw[arrow] (fs.east)   -> (sto.west);
 	\end{tikzpicture}
 	\caption[
 		Example of a filter manager I/O stack
@@ -86,6 +86,37 @@ After deciding against the frameworks mentioned in the previous section, only WD
 
 \subsection{Architecture}
 \label{chap:ourapproach.final.architecture}
+\todo{<PROJECT NAME>} consists of two components, one in kernel and one in user mode: the \texttt{luks2flt.sys} kernel driver, and the \texttt{luks2filterstart.exe} program to activate the filter for a volume. \autoref{fig:ourapproach.final.communication} shows this basic architecture.
+
+\begin{figure}
+	\center
+	\small
+	\begin{tikzpicture}
+		\node[rect, fill=tPink]                      (exe)  at (0, 4) {\texttt{luks2filterstart.exe}};
+		\node[rect, fill=tOrng, rounded corners=4pt] (root) at (0, 1) {\texttt{luks2flt.sys}};
+		\node[rect, fill=tYlow, rounded corners=4pt, text width=11.9em] (volx) at (8, 2) {\texttt{\textbackslash Device\textbackslash HarddiskVolume1}};
+		\node[rect, fill=tYlow, rounded corners=4pt, text width=11.9em] (voly) at (8, 1) {\texttt{\textbackslash Device\textbackslash HarddiskVolume2}};
+		\node[rect, fill=tYlow, rounded corners=4pt, text width=11.9em] (volz) at (8, 0) {\texttt{\textbackslash Device\textbackslash HarddiskVol...}};
+
+		\node[anchor=east] at (10.7, 3.25) {\footnotesize User space};
+		\draw[dashed] (-2, 3) -- (10.75, 3);
+		\node[anchor=east] at (10.7, 2.75) {\footnotesize Kernel space};
+
+		\draw[arrow] (exe.south) -- (root.north) node[midway, anchor=east] {\textit{activates}};
+
+		\draw[arrow] (root.east) -- (voly.west) node[midway] (mid) {};
+		\draw[arrow] (mid.center) |- (volx.west);
+		\draw[arrow] (mid.center) |- (volz.west);
+		\draw[draw=none] (root.east) -- (mid) node[midway, anchor=south] {\textit{filters}};
+	\end{tikzpicture}
+	\caption[
+		Basic architecture of \todo{<PROJECT NAME>}
+	]{
+		Basic architecture of \todo{<PROJECT NAME>}. \todo{todo}
+	}
+	\label{fig:ourapproach.final.communication}
+\end{figure}
+
 \todo{here and/or in other sections: screenshots from WinDbg showing e.g. a device stack and}\\\todo{luks2flt's device object}
 
 \todo{Also screenshots from the registry showing the modified volume class' lower filters?}

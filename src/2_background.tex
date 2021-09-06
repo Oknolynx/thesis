@@ -21,24 +21,29 @@ Our library does provide access to the raw decrypted user data, but the practica
 \subsection{On-Disk Format}
 \label{chap:background.luks2.ondisk}
 \begin{figure}[htb!]
-	\begin{tikzpicture}
-		\node [anchor=center] at (0.25, 1.5) {\footnotesize\makecell{primary\\binary header}};
-		\draw [fill={rgb:black, 1; white, 2}] (0, 0) rectangle (0.5, 1);
-		\draw [fill=white] (0.5, 0) rectangle (3.5, 1);
-		\node [anchor=center] at (2, 0.5) {\small\makecell{1\textsuperscript{st} JSON area}};
-		\node [anchor=center] at (3.75, 1.5) {\footnotesize\makecell{secondary\\binary header}};
-		\draw [fill={rgb:black, 1; white, 2}] (3.5, 0) rectangle (4, 1);
-		\draw [fill=white] (4, 0) rectangle (7, 1);
-		\node [anchor=center] at (5.5, 0.5) {\small\makecell{2\textsuperscript{nd} JSON area}};
-		\draw [fill=white] (7, 0) rectangle (10, 1);
-		\node [anchor=center] at (8.5, 0.5) {\small\makecell{Keyslots area}};
-		\node [anchor=center] at (10.25, 1.5) {\footnotesize\makecell{alignment\\padding}};
-		\draw [fill={rgb:black, 1; white, 2}] (10, 0) rectangle (10.5, 1);
+	\begin{tikzpicture}[
+		txt/.style={
+			anchor=center,
+			yshift=-1pt,
+		},
+	]
+		\node[anchor=center] at (0.25, 1.5) {\footnotesize\makecell{primary\\binary header}};
+		\draw[fill={rgb:black, 1; white, 2}] (0, 0) rectangle (0.5, 1);
+		\draw[fill=white] (0.5, 0) rectangle (3.5, 1);
+		\node[txt] at (2, 0.5) {\small\makecell{1\textsuperscript{st} JSON area}};
+		\node[anchor=center] at (3.75, 1.5) {\footnotesize\makecell{secondary\\binary header}};
+		\draw[fill={rgb:black, 1; white, 2}] (3.5, 0) rectangle (4, 1);
+		\draw[fill=white] (4, 0) rectangle (7, 1);
+		\node[txt] at (5.5, 0.5) {\small\makecell{2\textsuperscript{nd} JSON area}};
+		\draw[fill=white] (7, 0) rectangle (10, 1);
+		\node[txt] at (8.5, 0.5) {\small\makecell{Keyslots area}};
+		\node[anchor=center] at (10.25, 1.5) {\footnotesize\makecell{alignment\\padding}};
+		\draw[fill={rgb:black, 1; white, 2}] (10, 0) rectangle (10.5, 1);
 
 		\draw[decorate, decoration={calligraphic brace, amplitude=10pt, mirror}, semithick, yshift=-3pt] (0, 0) -- (10.5, 0) node[midway, yshift=-18pt] {\small Complete header};
 
-		\draw [fill=white] (10.5, 0) rectangle (15, 1);
-		\node [anchor=center] at (12.75, 0.5) {\small\makecell{Segment(s)}};
+		\draw[fill=white] (10.5, 0) rectangle (15, 1);
+		\node[txt] at (12.75, 0.5) {\small\makecell{Segment(s)}};
 	\end{tikzpicture}
 	\caption[
 		LUKS2 on-disk format
@@ -170,7 +175,11 @@ The sector containing the binary header is followed by the JSON area. This area 
 
 \begin{figure}[htb!]
 	\center
-	\begin{tikzpicture}
+	\begin{tikzpicture}[
+		rect/.append style={
+			text depth=0.5pt,
+		},
+	]
 		\node       (pass) at (4, 3.5)  {\small Passphrase};
 		\node       (stor) at (8, 3.5)  {\small External Keystore};
 		\node[rect] (dgst) at (0, 1.75) {\small Digest};
@@ -222,7 +231,7 @@ The properties of anti-forensic splitting can be used when the user wants to cha
 		\node[rect, anchor=west] (merge) at (8, 2) {\small AFmerge};
 		\node[rect, anchor=east] (rtcip) at (8, -0.5) {\small Real time cipher};
 
-		\draw[arrow] (ciphr)                   -- node[anchor=south, yshift=-4pt] {\small\makecell{Split master key}}  (merge);
+		\draw[arrow] (ciphr)                   -- node[anchor=south, yshift=-4pt] {\small\makecell{Split master key}}    (merge);
 		\draw[arrow] (pbkdf.west)  + (-2.5, 0) -- node[anchor=south, yshift=-4pt] {\small\makecell{Passphrase}}          (pbkdf.west);
 		\draw[arrow] (pbkdf.north) + (-0.6, 1) -- node[anchor=west]               {\small\makecell{Salt}}                +(-0.6, 0);
 		\draw[arrow] (pbkdf.north) + (0.6,  1) -- node[anchor=west]               {\small\makecell{Hash iteration rate}} +(0.6,  0);
@@ -375,9 +384,9 @@ Windows uses the physically available RAM to back its 64-bit address space of vi
 \begin{figure}[htb!]
 	\center
 	\begin{tikzpicture}
-		\node[rect, fill=tPink,     from={4.25, 3   to 7.25, 5}]   {\small\makecell{128 TB\\System Space}};
+		\node[rect, fill=tPink,     from={4.25, 3   to 7.25, 5}]   {\small 128 TB\\System Space};
 		\node[rect, fill={gray!30}, from={4.25, 2.1 to 7.25, 2.9}] {\small Unmapped};
-		\node[rect, fill=tOrng,     from={4.25, 0   to 7.25, 2}]   {\small\makecell{128 TB\\User Process\\Space}};
+		\node[rect, fill=tOrng,     from={4.25, 0   to 7.25, 2}]   {\small 128 TB\\User Process\\Space};
 
 		\node[anchor=west] at (0.25, 0)    {\footnotesize\texttt{0x00000000'00000000}};
 		\node[anchor=west] at (0.25, 2.05) {\footnotesize\texttt{0x00008000'00000000}};
@@ -402,12 +411,16 @@ Windows uses the physically available RAM to back its 64-bit address space of vi
 
 \begin{figure}[htb!]
 	\center
-	\begin{tikzpicture}
-		\node[rect, fill=tPink, from={0, 7.7   to 3, 8.3}]  {\small System Processes};
-		\node[rect, fill=tOrng, from={4, 7.7   to 7, 8.3}]  {\small Service Processes};
-		\node[rect, fill=tYlow, from={8, 7.7   to 11, 8.3}] {\small User Processes};
-		\node[rect, fill=tGren, from={1.5, 6.7 to 11, 7.3}] {\small Subsystem DLLs};
-		\node[rect, fill=tLblu, from={0, 5.7   to 11, 6.3}] {\small Ntdll.dll};
+	\begin{tikzpicture}[
+		rect/.append style={
+			inner sep=0,
+		},
+	]
+		\node[rect, fill=tPink, from={0, 7.7   to 3.2, 8.3}] {\small System Processes};
+		\node[rect, fill=tOrng, from={3.9, 7.7 to 7.1, 8.3}] {\small Service Processes};
+		\node[rect, fill=tYlow, from={7.8, 7.7 to 11, 8.3}]  {\small User Processes};
+		\node[rect, fill=tGren, from={1.6, 6.7 to 11, 7.3}]  {\small Subsystem DLLs};
+		\node[rect, fill=tLblu, from={0, 5.7   to 11, 6.3}]  {\small Ntdll.dll};
 
 		\node[anchor=south] at (12.5, 5.5) {\small User mode};
 		\draw[color=red, thick] (-0.25, 5.5) -- (13.75, 5.5);
@@ -824,19 +837,19 @@ In memory, the IRP is followed by one or more \emph{stack locations}, their coun
 	\center
 	\small
 	\begin{tikzpicture}
-		\node[rectangle, fill=tPink,   from={0, 5.6 to 3, 6.4}] {\makecell{MajorFunction}};
-		\node[rectangle, fill=tPink,   from={3, 5.6 to 6, 6.4}] {\makecell{MinorFunction}};
-		\node[rectangle, fill=gray!30, from={0, 4.8 to 3, 5.6}] {\makecell{Flags}};
-		\node[rectangle, fill=gray!30, from={3, 4.8 to 6, 5.6}] {\makecell{Control}};
-		\node[rectangle, fill=tOrng,   from={0, 3.2 to 6, 4.8}] {\makecell{Parameters}};
-		\node[rectangle, fill=tYlow,   from={0, 2.4 to 6, 3.2}] {\makecell{DeviceObject}};
-		\node[rectangle, fill=tYlow,   from={0, 1.6 to 6, 2.4}] {\makecell{FileObject}};
-		\node[rectangle, fill=tGren,   from={0, 0.8 to 6, 1.6}] {\makecell{CompletionRoutine}};
-		\node[rectangle, fill=tLblu,   from={0, 0   to 6, 0.8}] {\makecell{Context}};
+		\node[rectangle, fill=tPink,   from={0, 5.6 to 3, 6.4}]                    {MajorFunction};
+		\node[rectangle, fill=tPink,   from={3, 5.6 to 6, 6.4}]                    {MinorFunction};
+		\node[rectangle, fill=gray!30, from={0, 4.8 to 3, 5.6}]                    {Flags};
+		\node[rectangle, fill=gray!30, from={3, 4.8 to 6, 5.6}]                    {Control};
+		\node[rectangle, fill=tOrng,   from={0, 3.2 to 6, 4.8}]                    {Parameters};
+		\node[rectangle, fill=tYlow,   from={0, 2.4 to 6, 3.2}, text depth=-0.5pt] {DeviceObject};
+		\node[rectangle, fill=tYlow,   from={0, 1.6 to 6, 2.4}, text depth=-0.5pt] {FileObject};
+		\node[rectangle, fill=tGren,   from={0, 0.8 to 6, 1.6}, text depth=-0.5pt] {CompletionRoutine};
+		\node[rectangle, fill=tLblu,   from={0, 0   to 6, 0.8}]                    {Context};
 
-		\node[rect, fill=tBlue, from={7.5, 4.6 to 10.5, 5.4}] {\makecell{Read}};
-		\node[rect, fill=tBlue, from={7.5, 3.6 to 10.5, 4.4}] {\makecell{Write}};
-		\node[rect, fill=tBlue, from={7.5, 2.6 to 10.5, 3.4}] {\makecell{\ldots}};
+		\node[rect, fill=tBlue, from={7.5, 4.6 to 10.5, 5.4}] {Read};
+		\node[rect, fill=tBlue, from={7.5, 3.6 to 10.5, 4.4}] {Write};
+		\node[rect, fill=tBlue, from={7.5, 2.6 to 10.5, 3.4}] {\ldots};
 
 		\draw (0, 0) rectangle (6, 6.4);
 		\draw (3, 4.8) -- (3, 6.4);
@@ -871,7 +884,7 @@ The already mentioned completion routines are a way for drivers to intercept the
 	\center
 	\small
 	\begin{tikzpicture}
-		\node[rect, fill=gray!30, rounded corners=4pt, from={0, 7.2 to 4, 8.1}] (iomgr) {\small\makecell{I/O Manager}};
+		\node[rect, fill=gray!30, rounded corners=4pt, from={0, 7.2 to 4, 8.1}] (iomgr) {\small I/O Manager};
 		\node[rect, fill=tBlue, text width=3em] at (-1.3, 6.7) {\small IRP};
 
 		\node[rect, fill=tYlow, from={0.2, 0.3 to 3.8, 6.2}] {};
