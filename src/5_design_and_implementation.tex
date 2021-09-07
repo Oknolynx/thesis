@@ -62,19 +62,19 @@ See the official documentation \cite{Fltmgr} for more information on the filter 
 \label{chap:ourapproach.rejected.wdf}
 As already mentioned in \autoref{chap:background.kerneldriver.wdm}, another possibility to develop a driver are the Kernel Mode Driver Framework (KMDF) and User Mode Driver Framework (UMDF), together called the Windows Driver Frameworks (WDF). These try to simplify things by abstracting away some of the details that WDM drivers have to care about. The basic principles (e.g. IRP-based I/O) remain the same \cite{Yosifovich2017}.
 
-We decided against using the UMDF out of performance concerns; as the framework's name suggests, UMDF drivers run in user mode. This has certain advantages, such as increased system stability. But most of the I/O ecosystem runs in kernel mode, which means that switches between kernel and user mode are necessary when an I/O driver runs in user mode. These induce latency, together with some additional communication with the kernel \cite{Yosifovich2017}.
+We decided against using UMDF out of performance concerns; as the framework's name suggests, UMDF drivers run in user mode. This has certain advantages, such as increased system stability. But most of the I/O ecosystem runs in kernel mode, which means that switches between kernel and user mode are necessary when an I/O driver runs in user mode. These induce latency, together with some additional communication with the kernel \cite{Yosifovich2017}.
 
 KMDF does not have this problems, but there were other factors that led to our decision against it:
 \begin{itemize}
 	\item We had previously tried another framework that simplified things though abstraction (see \autoref{chap:ourapproach.rejected.fltmgr}) and it had not worked. Therefore it seemed safer to do all the work ourselves, and in return be sure that the framework will not be a reason for failure.
-	\item By default, KMDF filter drivers pass all received IRPs to the next driver in the stack \cite{Wdf}. However, our planned approach was as follows: don't pass through anything at first, and then gradually during the development process allow more and more requests to pass through. This is still possible with the KMDF, but more work than for a WDM driver.
-	\item One of the biggest selling points of using the KMDF is that it handles PnP and Power IRPs for the driver. These are not really relevant to filter drivers, though (see \todo{\autoref{chap:ourapproach.final.otherrequests}} for how our final driver handles them). Therefore we would not gain that much by sacrificing total control for reduced complexity, because the hidden complexity is not that relevant in the first place.
+	\item By default, KMDF filter drivers pass all received IRPs to the next driver in the stack \cite{Wdf}. However, our planned approach was as follows: don't pass through anything at first, and then gradually during the development process allow more and more requests to pass through. This is still possible with KMDF, but more work than for a WDM driver.
+	\item One of the biggest selling points of using KMDF is that it handles PnP and Power IRPs for the driver. These are not really relevant to filter drivers, though (see \todo{\autoref{chap:ourapproach.final.otherrequests}} for how our final driver handles them). Therefore we would not gain that much by sacrificing total control for reduced complexity, because the hidden complexity is not that relevant in the first place.
 	\item Finally, writing a WDM driver requires a more complete understanding of how the kernel's IRP-based I/O system works. We wanted to learn as much as possible, and for this purpose WDM seemed the better fit.
 \end{itemize}
 
-Now that our WDM driver is finished, it would be interesting to compare it to an equivalent that was written using the KMDF, both its architecture and performance. This is left as an exercise to the curious reader; \autoref{chap:ourapproach.final} should be a good starting point.
+Now that our WDM driver is finished, it would be interesting to compare it to an equivalent that was written using KMDF, both its architecture and performance. This is left as an exercise to the curious reader; \autoref{chap:ourapproach.final} should be a good starting point.
 
-\cite{Yosifovich2017} contains detailed information on the architecture and inner workings of both the KMDF and UMDF. The official documentation \cite{Wdf} is also a valuable source of information.
+\cite{Yosifovich2017} contains detailed information on the architecture and inner workings of both KMDF and UMDF. The official documentation \cite{Wdf} is also a valuable source of information.
 
 \subsection{Other User Space Frameworks}
 \label{chap:ourapproach.rejected.other}
@@ -86,7 +86,7 @@ After deciding against the frameworks mentioned in the previous section, only WD
 
 \subsection{Architecture}
 \label{chap:ourapproach.final.architecture}
-\todo{<PROJECT NAME>} consists of two components, one in kernel and one in user mode: the \texttt{luks2flt.sys} kernel driver, and the \texttt{luks2filterstart.exe} program to activate the filter for a volume. \autoref{fig:ourapproach.final.communication} shows this basic architecture.
+\todo{<PROJECT NAME>} consists of two components, one in kernel and one in user mode: the \texttt{luks2flt.sys} kernel driver, and the \texttt{luks2filterstart.exe} program to activate the filter for a volume. \autoref{fig:ourapproach.final.communication} shows this basic communication and architecture.
 
 \begin{figure}
 	\center
@@ -99,7 +99,7 @@ After deciding against the frameworks mentioned in the previous section, only WD
 		\node[rect, fill=tYlow, rounded corners=4pt, text width=11.9em] (volz) at (8, 0) {\texttt{\textbackslash Device\textbackslash HarddiskVol...}};
 
 		\node[anchor=east] at (10.7, 3.25) {\footnotesize User space};
-		\draw[dashed] (-2, 3) -- (10.75, 3);
+		\draw[dashed] (-2.4, 3) -- (10.75, 3);
 		\node[anchor=east] at (10.7, 2.75) {\footnotesize Kernel space};
 
 		\draw[arrow] (exe.south) -- (root.north) node[midway, anchor=east] {\textit{activates}};
@@ -107,33 +107,89 @@ After deciding against the frameworks mentioned in the previous section, only WD
 		\draw[arrow] (root.east) -- (voly.west) node[midway] (mid) {};
 		\draw[arrow] (mid.center) |- (volx.west);
 		\draw[arrow] (mid.center) |- (volz.west);
-		\draw[draw=none] (root.east) -- (mid) node[midway, anchor=south] {\textit{filters}};
+		\draw[draw=none] (root.east) -- (mid) node[midway, anchor=south, yshift=-1pt] {\textit{filters}};
+		\draw[draw=none] (root.east) -- (mid) node[midway, anchor=north]              {\textit{IRPs for}};
 	\end{tikzpicture}
 	\caption[
-		Basic architecture of \todo{<PROJECT NAME>}
+		Basic communication and architecture of \todo{<PROJECT NAME>}
 	]{
-		Basic architecture of \todo{<PROJECT NAME>}. \todo{todo}
+		Basic communication and architecture of \todo{<PROJECT NAME>}. To activate the filtering, \texttt{luks2filterstart} sends a custom IOCTL to a device, in response to which \texttt{luks2flt} starts filtering requests.
 	}
 	\label{fig:ourapproach.final.communication}
 \end{figure}
 
+\texttt{luks2flt} is a WDM lower filter driver that attaches to all devices in the Volume class. This is the same mechanism that the BitLocker filter driver uses. It attaches to all volumes at boot time, but only starts filtering after receiving the command to do so from \texttt{luks2filterstart.exe} (see \autoref{chap:ourapproach.final.init} for the reasons behind this choice and other details). Compared to VeraCrypt and the Linux kernel implementation of LUKS2, this is a completely different approach, as these both create a new device instead of filtering requests for an existing one.
+
+\todo{mention that luks2filterstart is written in Rust}
+
+Another important part of the architecture is where the actual cryptographic work happens. Both LUKS2's reference implementation and BitLocker let the OS's crypto providers do the work, VeraCrypt ships their own implementations. Because the API that BitLocker uses is not publicly documented (and there seems to be no public alternative), we decided against using it. When researching the topic of implementing AES, we found that the general consensus seems to be that it is seldom a good idea to ``roll your own crypto.'' This is why we tried to link \texttt{luks2flt} against existing cryptography libraries. To complicate things, these would need to be compiled specifically for being called from Windows kernel mode; the distributed library binaries do not work. We tried getting the following two libraries to work:
+\begin{descitemize}
+	\item[OpenSSL] This was our first choice because of the project's popularity, but the attempt was abandoned quickly. OpenSSL has a horribly complicated build system\footnote{\label{fn:ourapproach.final.opensslbuild} One of the build steps is to run Perl scripts which emit assembly, which is later assembled and linked together with C code.} and it became clear that compiling this for the Windows kernel was not feasible.
+	\item[libsodium] Chosen for its promising build process using Microsoft Visual Studio, which we also used to develop and compile our driver, this library could be compiled in such a way that our driver could use it. However, after the initial setup process we realized that this library does not support the AES-XTS mode\footnote{\label{fn:ourapproach.final.libsodium} In fact, it doesn't even support AES on its own. The only possibility is to use AES with the Galois Counter Mode (GCM). A mode-agnostic implementation of AES would have simplified our work of implementing AES-XTS, because half of the work would have been done already.}, which is crucial for our driver's functionality. Therefore, we had to reject this library.
+\end{descitemize}
+
+In the end, we decided that for a scientific project it would be okay to implement our own cryptographic functionality. We adapted the AES and AES-XTS implementations of two existing Rust libraries\footnote{\label{fn:ourapproach.final.rustcrypto} \url{https://github.com/RustCrypto/Block-ciphers} and \url{https://github.com/pheki/Xts-mode}}, translating them to C code. More on this topic is described in \autoref{chap:ourapproach.final.de_encrypting}.
+
 \todo{here and/or in other sections: screenshots from WinDbg showing e.g. a device stack and}\\\todo{luks2flt's device object}
-
-\todo{Also screenshots from the registry showing the modified volume class' lower filters?}
-
-\todo{compare to architecture of reference implementation, as promised in \autoref{chap:otherapproaches.linux}}\\
-\todo{also compare to VeraCrypt and BitLocker}
 
 \todo{explain ``by the way''? or move to \autoref{chap:background.kerneldriver.concepts}}
 \begin{itemize}
-	\item INF files (page 485) (promised in \autoref{chap:background.kerneldriver.wdm}) (mention https://docs.microsoft.com/en-us/windows-hardware/drivers/devtest/infverif)?
 	\item look-aside lists (page 331)
-	\item communication between kernel and userspace via ports
 \end{itemize}
+
+\subsection{Installation}
+\label{chap:ourapproach.final.install}
+\cite{Yosifovich2017} and \cite{Wdk} describe to ways to install a driver: either using setup information (INF) files, or using the \texttt{CreateService} Win32 API. The latter probably makes for a better user experience, because the user does not have to manually install the driver using its INF file. It is also possible to install a driver with an INF file without user interaction, but to our knowledge there is no easy-to-use API for it\footnote{\label{fn:ourapproach.final.automaticinfinstall} One possibility would be to execute \texttt{pnputil /add-driver <path to INF> /install}.}. VeraCrypt, as described in \autoref{chap:otherapproaches.veracrypt.peeking}, chose the \texttt{CreateService} API, and BitLocker already ships with Windows. Because we did not want an extra executable for installing our driver during development, we chose to use an INF file to install \texttt{luks2flt}.
+
+INF files are text files containing the information needed to install a driver. This includes version information, details about the driver's location, load time, and error handling, and updates to registry values that need to be executed at installation. Writing an INF file is not completely trivial, even for a simple use case as a WDM filter driver. \cite{Wdk} includes, in addition to the information that we just presented, more details about the structure of INF files, plus best practices and examples for common use cases. Our recommendation is to also use the \texttt{InfVerif} tool\footnote{\label{fn:ourapproach.final.infverif} \url{https://docs.microsoft.com/en-us/windows-hardware/drivers/devtest/infverif}} to test INF files and verify that they do what one wants them to do.
+
+The most important parts of the INF file that we wrote for \texttt{luks2flt} is shown in \autoref{fig:ourapproach.final.luks2fltini}.
+
+\begin{figure}[htb!]
+	\begin{inicode}
+[DefaultInstall.NTamd64]
+CopyFiles = Luks2CopyFiles
+AddReg    = Luks2AddReg
+
+[DefaultInstall.NTamd64.Services]
+AddService = %ServiceName%,,Luks2Service
+
+[Luks2Service]
+DisplayName    = %ServiceName%
+Description    = %ServiceDescription%
+ServiceBinary  = %12%\luks2flt.sys
+ServiceType    = 1 ; SERVICE_KERNEL_DRIVER
+StartType      = 0 ; SERVICE_BOOT_START
+ErrorControl   = 1 ; SERVICE_ERROR_NORMAL
+LoadOrderGroup = "Filter"
+
+[Luks2AddReg]
+HKLM,%VolumeClassPath%,"LowerFilters",0x00010008,"luks2flt"
+
+[Luks2CopyFiles]
+luks2flt.sys
+	\end{inicode}
+	\caption[
+		Excerpt from \texttt{luks2flt}'s INF file
+	]{
+		Excerpt from \texttt{luks2flt}'s INF file. Values of the form \texttt{\%val\%} get replaced with the value of the variable \texttt{val}. These values are either defined in an extra section of the INF file or are predefined. E.g. the \texttt{\%12\%} in the \texttt{ServiceBinary} value in line 11 will always expand to \texttt{\%SystemRoot\%\textbackslash System32\textbackslash drivers}, where \texttt{\%SystemRoot\%} is the Windows installation directory (in most cases \texttt{C:\textbackslash Windows}).\\
+		The sections starting with \texttt{DefaultInstall} specify which other sections will be executed. In this case three actions will be performed: copying the driver's \texttt{.sys} file, adding a registry entry, and adding a service.\\
+		The information in the \texttt{Luks2Service} section will end up in the Software registry key for \texttt{luks2flt} (see \autoref{tbl:background.kerneldriver.registrykeys}). The orientation for the chosen values were mostly the ones that the BitLocker driver uses. They can be found at \texttt{HKLM\textbackslash SYSTEM\textbackslash CCS\textbackslash Services\textbackslash fvevol}.\\
+		The \texttt{Luks2AddReg} section specifies that upon installation the string \texttt{luks2flt} will be appended to the \texttt{LowerFilters} value of the Volume Class key, \texttt{System\textbackslash CCS\textbackslash Control\textbackslash Class\textbackslash \{71a27cdd-812a-11d0-bec7-08002be2092f\}}. See \autoref{fig:background.kerneldriver.registry} for what the values under the Volume Class key usually look like.
+	}
+	\label{fig:ourapproach.final.luks2fltini}
+\end{figure}
+
+\todo{Screenshots from the registry showing the modified volume class' lower filters?}
 
 \subsection{Initialization and Configuration}
 \label{chap:ourapproach.final.init}
 \todo{\texttt{luks2filterstart.exe}}
+
+Because the device stack for volumes is built at boot time, and it is not possible to scan the data stored on the device for a LUKS2 header at this point\footnote{\label{fn:ourapproach.final.readatboot} We do not have a source for this claim, but we tried to make it possible and did not succeed.}, \texttt{luks2flt} attaches to all devices in the Volume class. However, the default is let every incoming request pass through, and only start filtering after the appropriate IOCTL from \texttt{luks2filterstart.exe} was received. \todo{more detail about what other information is contained in the IOCTL data buffer}
+
+\todo{mention possibility of configuring via registry which devices luks2flt should attach to}
+\todo{we still need luks2filterstart.exe for sending the password, but all other config could be in the registry}
 
 \todo{\texttt{DriverEntry} function, keep \autoref{fig:otherapproaches.bitlocker.driverentry} in mind}
 
