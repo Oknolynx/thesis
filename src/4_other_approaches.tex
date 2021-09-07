@@ -283,12 +283,12 @@ Looking at \texttt{cryptsetup}'s implementation of its support for BitLocker vol
 	\caption[
 		Properties of \texttt{fvevol.sys}
 	]{
-		Properties of \texttt{fvevol.sys} (Screenshot from Windows Explorer). Note especially its description. This file is usually located at \texttt{C:\textbackslash Windows\textbackslash System32\textbackslash drivers\textbackslash fvevol.sys}.
+		Properties of \texttt{fvevol.sys} (Screenshot from Windows Explorer). This file is usually located at \texttt{C:\textbackslash Windows\textbackslash System32\textbackslash drivers\textbackslash fvevol.sys}.
 	}
 	\label{fig:otherapproaches.bitlocker.fvevol}
 \end{figure}
 
-\autoref{fig:otherapproaches.bitlocker.driverentry} shows that the BitLocker driver filters only IRPs with certain major functions, skipping all other requests. \todo{We employ a similar tactic for our driver.}
+\autoref{fig:otherapproaches.bitlocker.driverentry} shows that the BitLocker driver filters only IRPs with certain major functions, skipping all other requests. \todo{add screenshot with WinDbg output for \texttt{!drvobj fvevol 7}? or maybe in \autoref{chap:ourapproach.final.genericdispatch}}
 
 \begin{figure}[htb!]
 	\center
@@ -296,8 +296,8 @@ Looking at \texttt{cryptsetup}'s implementation of its support for BitLocker vol
 	\caption[
 		Assembly and disassembly of parts of the \texttt{DriverEntry} function
 	]{
-		Assembly and disassembly of parts of the \texttt{DriverEntry} function (Screenshot from \href{https://www.ghidra-sre.org}{Ghidra}). Shown here is the definition of which function of the driver will be called when an IRP passes through it. These are called dispatch routines. The driver has to specify the different dispatch routine for each IRP major function. \todo{See \autoref{chap:ourapproach.final.init} for more details on this initialization process.}\\
-		\texttt{fvevol.sys} only defines specific dispatch routines for the Create, Close, Cleanup, Read, Write, DeviceControl, Power, and PnP major functions. All other major functions use the generic \texttt{FveFilterSkip} routine, which usually just forwards the IRP to the next driver in the stack (except for some error cases, where it fails the request).
+		Assembly and disassembly of parts of the \texttt{DriverEntry} function (Screenshot from \href{https://www.ghidra-sre.org}{Ghidra}). Shown here is the definition of which function of the driver will be called when an IRP passes through it. These are called dispatch routines. The driver has to specify the different dispatch routine for each IRP major function. \todo{See \autoref{chap:ourapproach.final.genericdispatch} for more details on this initialization process.}\\
+		\texttt{fvevol.sys} only defines specific dispatch routines for the Create, Close, Cleanup, Read, Write, DeviceControl, Power, and PnP major functions. All others use a generic routine, which usually just forwards the IRP to the next driver in the stack (except for some error cases, where it fails the request).
 	}
 	\label{fig:otherapproaches.bitlocker.driverentry}
 \end{figure}
