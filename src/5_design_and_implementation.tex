@@ -203,17 +203,63 @@ At this point we want to note the following: it would also be possible to store 
 
 \subsection{The \texttt{DriverEntry} Routine and IRP Dispatching}
 \label{chap:ourapproach.final.genericdispatch}
-Every WDM driver must implement a \texttt{DriverEntry} routine. It is called when the driver gets loaded and is responsible for driver initialization \cite{Wdk}.
+Every WDM driver must implement a \texttt{DriverEntry} routine. It is called when the driver gets loaded and is responsible for driver initialization \cite{Wdk}. In addition to initializing global driver state, this routine must store pointers to three types of other routines in its driver object \cite{Kerneldriver}:
+\begin{descitemize}
+	\item[An \texttt{AddDevice} routine] This gets called during device enumeration (see \autoref{chap:background.kerneldriver.wdm}), when the PnP manager finds a new device whose stack the driver may want to attach to. Its responsibilities are creating a new device object, initializing it, and attaching it to the device stack.
+	\item[An Unload routine] This gets called just before the driver is unloaded. Here, all memory and other resources that were allocated in the \texttt{DriverEntry} routine are freed.
+	\item[IRP Dispatch routines] These are responsible for handling IRPs. The dispatch routine is specified separately for each IRP major function.
+\end{descitemize}
 
-\todo{\href{https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/driverentry-s-required-responsibilities}{this} and \href{https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nc-wdm-driver_initialize}{this}}
+The specification of the BitLocker driver's dispatch routines can be found in \autoref{fig:otherapproaches.bitlocker.driverentry}. \autoref{fig:ourapproach.final.windbgdispatch} lists the routines that \texttt{luks2flt} registers and \autoref{fig:ourapproach.final.irpdispatch} describes the driver's IRP dispatching technique.
 
-\todo{\texttt{DriverEntry} function, keep \autoref{fig:otherapproaches.bitlocker.driverentry} in mind}
+\begin{figure}[htb!]
+	\center
+	\includegraphics[scale=0.35]{../img/ourapproach.final.windbgdispatch.png}
+	\caption[
+		\texttt{luks2flt}'s registered routines
+	]{
+		\texttt{luks2flt}'s registered routines (Screenshot from WinDbg). This is part of the output that WinDbg shows for the \texttt{!drvobj luks2flt 7} command. The routines that were registered during initialization are shown: its unload, \texttt{AddDevice}, and IRP dispatch routines. IRPs of all major functions are handled by a generic dispatch routine, whose logic is described in \autoref{fig:ourapproach.final.irpdispatch}.
+	}
+	\label{fig:ourapproach.final.windbgdispatch}
+\end{figure}
 
-\todo{generic dispatch: pass through everything if filtering not enabled, else either send IRP to specific dispatch routine or reject it}
+\begin{figure}
+	\center
+	\small
+	\begin{tikzpicture}[
+		rect/.append style={
+			inner sep=0pt,
+			text depth=0pt,
+		},
+	]
+		\node                                                                       (irp)  at (3.7, 4)  {IRP};
+		\node[rect, fill=tPink, text width=9em, minimum height=0.8cm]               (gen)  at (8.1, 4)  {\texttt{DispatchGeneric}};
+		\node[rect, fill=tOrng, text width=11em, minimum height=0.8cm, anchor=east] (pass) at (16.2, 4) {\texttt{DispatchPassthrough}};
 
-\todo{add screenshot with WinDbg output for \texttt{!drvobj fvevol 7}? or maybe in \autoref{chap:otherapproaches.bitlocker.decompiling}}
+		\foreach \x\n\c in {0/DispatchRead/tYlow,3.3/DispatchWrite/gray!30,6.6/DispatchPower/tYlow,9.9/DispatchPnp/tYlow,13.2/FailIrp/tPurp} {
+			\node[rect, fill=\c, from={\x, 1 to \x+3, 1.8}] {\texttt{\n}};
+		}
+		\foreach \x\n in {1.5/Cleanup,6/CreateClose,10.5/DevControl} {
+			\node[rect, fill=tYlow, from={\x, 0 to \x+4.2, 0.8}] {\texttt{Dispatch\n}};
+		}
+		\draw[dashed] (-0.2, -0.2) rectangle (16.4, 2);
 
-\todo{briefly mention \texttt{DriverUnload} routine?}
+		\draw[arrow] (irp) -> (gen);
+		\draw[arrow] (gen) -> node[midway, anchor=south, yshift=-1pt] {\textit{filtering}} (pass);
+		\draw[draw=none] (gen) -> node[midway, anchor=north] {\textit{disabled}} (pass);
+		\draw[arrow] (gen) -> node[midway, anchor=west, align=left, xshift=1.5pt] {\textit{filtering}\\\textit{enabled}} (8.1, 2);
+	\end{tikzpicture}
+	\caption[
+		IRP flow through \texttt{luks2flt}'s dispatch routines
+	]{
+		IRP flow through \texttt{luks2flt}'s dispatch routines. All IRPs first arrive at the generic dispatch routine. If filtering has not been enabled for the device, all IRPs (except for two special cases described shortly) are passed to the next-lower driver in the device stack. If it has been enabled, IRPs that have a dispatch routine corresponding to their major function are sent to this routine. All other IRPs are rejected.\\
+		\texttt{DispatchWrite} is greyed out because while an implementation exists, we disabled write access and fail Write IRPs. See \autoref{chap:ourapproach.final.writeproblem} for the reasons why we made this decision.\\
+		If a PnP remove request or the IOCTL send by \texttt{luks2filterstart.exe} arrives, it is always handled by \texttt{DispatchPnp} or \texttt{DispatchDevControl}, respectively. These routines for filtered devices already implement handling those requests, and their implementations work just as well for non-filtered devices.
+	}
+	\label{fig:ourapproach.final.irpdispatch}
+\end{figure}
+
+The handling of IRPs with allowed major functions for filtered devices will be described in the following \todo{two} sections.
 
 \subsection{Handling Read and Write Requests}
 \label{chap:ourapproach.final.de_encrypting}
@@ -252,6 +298,8 @@ EncryptWriteBuffer(
 \subsection{Handling Other Request Types}
 \label{chap:ourapproach.final.otherrequests}
 \todo{orientation: decompiled code from the BitLocker driver (both the dispatch array values and the implementations of the dispatch routines)}
+
+\todo{pnp remove: cite \href{https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/removing-a-device-in-a-filter-driver}{this} and \href{https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/removing-a-device-in-a-function-driver}{this}}
 
 \subsection{The Problem With Writing to a Volume}
 \label{chap:ourapproach.final.writeproblem}
