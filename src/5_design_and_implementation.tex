@@ -191,7 +191,7 @@ The device stack for volumes is built at boot time, and it is not possible to sc
 To do its work when actually filtering a volume, \texttt{luks2flt} needs some information:
 \begin{itemize}
 	\item The volume's sector size, to calculate the sector number given a byte offset into the volume. This is needed because our driver only supports the plain64 IV generator for AES-XTS, which means that the IV for the encryption is the 64-bit little-endian representation of the sector number. Read and Write IRPs only contain the read or write offset, and we therefore need to calculate the sector number ourselves.
-	\item The first sector of the LUKS2 segment, relative to the first sector of the volume. This value is also part of the JSON section of the volume's LUKS2 header. It is needed to shift the offset of a Read or Write IRP: all drivers above \texttt{luks2flt} and all user mode applications use offsets relative to the segment's first sector, but drivers below use offsets relative to the volume's first sector.
+	\item The first sector of the LUKS2 segment, relative to the first sector of the volume. This value is also part of the JSON section of the volume's LUKS2 header. It is needed to shift the offset of a Read or Write IRP, as explained in \autoref{chap:ourapproach.final.de_encrypting}.
 	\item The key size for the encryption, i.e. whether AES-128-XTS (128-bit or 32-byte key) or AES-256-XTS (256-bit or 64-byte key) is used.
 	\item The master key for decrypting reads and encrypting writes.
 \end{itemize}
@@ -263,13 +263,24 @@ The handling of IRPs with allowed major functions for filtered devices will be d
 
 \subsection{Handling Read and Write Requests}
 \label{chap:ourapproach.final.de_encrypting}
-\todo{custom AES implementation as promised in \autoref{chap:ourapproach.final.architecture}}
+The basic idea of handling Read and Write IRPs for filtered volumes is, as we will see, almost the same. We will first describe the commonalities, then the specifics for Write requests, and then those for Read requests (which only require a little modification of the Write process).
+
+Both Read and Write IRPs need adjusting to the read/write offset: all drivers above \texttt{luks2flt} and all user mode applications use offsets relative to the segment's first sector. The drivers below however use offsets relative to the volume's first sector. Therefore, \texttt{luks2flt} needs to translate between those two kinds of offsets. This is as simple as shifting the offset by the position of the encrypted segment on disk.
+
+An example: a program in user mode wants to read the first sector of an unlocked LUKS2 volume. This request reaches \texttt{luks2flt} as a Read IRP with an offset of zero bytes. On disk however there are (in this example) 16 mebibytes of LUKS2 metadata before the first sector of encrypted data. The read offset therefore needs to be set to 16,777,216 bytes, so that the lower-level drivers read the correct, wanted data.
+
+For Write requests, only one more task needs to be done: encrypting the received plaintext data before it is written to disk. Recall from \autoref{chap:background.luks2.using} that LUKS2 supports many encryption algorithms, but \texttt{luks2flt} only supports \texttt{aes-xts-plain64}. The encryption is therefore always done using our own implementation of AES-XTS (\todo{todo}).
+
+Read requests require one more step, because when the IRP first arrives at our driver, no data has actually been read yet. That is the duty of the drivers below \texttt{luks2flt} in the volume's device stack. We therefore need to wait until these have completed all their work for this IRP. Completion routines, which were introduced in \autoref{chap:background.kerneldriver.concepts}, were explicitly designed for this purpose. After shifting the read offset as explained above, the Read dispatch routine registers a completion routine. It will be called when the lower-level drivers have successfully completed the IRP\footnote{\label{fn:ourapproach.final.failedlowerlevel} Should a lower-level driver fail the IRP, our completion routine will not be called, as there is nothing to decrypt.}. The only job of the completion routine is to decrypt the read data. Again, this is accomplished using our AES-XTS implementation.
+
+\todo{custom AES implementation as promised in \autoref{chap:ourapproach.final.architecture}},\\
+\todo{for performance reasons the initialization of crypto stuff happens when the IOCTL is received},\\
+\todo{explain the LUKS2\_CRYPTO\_INFO structure etc?}
 
 \todo{make sure this section and \autoref{chap:background.luks2.using} are not too similar}
 
-LUKS2 supports many encryption algorithms (see \cite{Broz2018}, Table 4), but \texttt{luks2flt} only supports \texttt{aes-xts-plain64}.
-
-\begin{ccode}
+\begin{figure}
+	\begin{ccode}
 VOID
 EncryptWriteBuffer(
     PUINT8 Buffer,
@@ -277,8 +288,7 @@ EncryptWriteBuffer(
     PLUKS2_VOLUME_CRYPTO CryptoInfo,
     UINT64 OrigByteOffset,
     UINT64 Length
-)
-{
+) {
     UINT64 Sector = OrigByteOffset / VolInfo->SectorSize;
     UINT64 Offset = 0;
     UINT8 Tweak[16];
@@ -293,7 +303,14 @@ EncryptWriteBuffer(
         Sector += 1;
     }
 }
-\end{ccode}
+	\end{ccode}
+	\caption[
+		\todo{todo}
+	]{
+		\todo{todo}
+	}
+	\label{fig:ourapproach.final.encryptwrite}
+\end{figure}
 
 \subsection{Handling Other Request Types}
 \label{chap:ourapproach.final.otherrequests}
