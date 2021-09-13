@@ -2,13 +2,13 @@
 \label{chap:relatedwork}
 To our knowledge, we are the first to implement parts of the LUKS2 specification for the Windows operating system. However, there are of course other file encryption systems and implementations of kernel drivers for similar purposes. In this chapter we present a selection of these, and additionally list related work in the fields of driver testing and file system benchmarking. In addition to the following paragraphs, \autoref{chap:otherapproaches} describes three other implementations of encryption systems for partitions, including the reference implementation of LUKS2.
 
-\cite{Korchagin2020} partially describes the inner workings of the Linux kernel framework that LUKS2's reference implementation uses. They implemented a new feature to configure whether read and write requests should be queued in the kernel. Turning the queueing off resulted in significantly increased throughput for certain hardware configurations and use cases. \todo{optimizations also mentioned in \autoref{chap:otherapproaches.linux.dm}, remove or rewrite there?}
+\cite{Korchagin2020} partially describes the inner workings of the Linux kernel framework that LUKS2's reference implementation uses. They implemented a new feature to configure whether read and write requests should be queued in the kernel. Turning the queueing off resulted in significantly increased throughput for certain hardware configurations and use cases.% \todo{optimizations also mentioned in \autoref{chap:otherapproaches.linux.dm}, remove or rewrite there?}
 
 An implementation of a kernel driver for purposes that are similar to ours, but for Linux instead of Windows, is presented in \cite{Barker2019}. This driver adds support for a plausibly deniable file system to Linux, i.e. the data written to the disk by the driver is ``indistinguishable from other pseudorandom blocks on the disk''. Like the LUKS2 reference implementation, the driver makes use of the Linux kernel device mapper infrastructure, which is described in \autoref{chap:otherapproaches.linux.dm}.
 
 A comparison and performance study of various file encryption systems can be found in \cite{Wright2003}. The result is that the performance of encrypted hard disks is good enough for practical usage, in part thanks to good usage of caches. They also identify problems in hard disk encryption, including a lack of common standards. LUKS2, the standard that our driver implements, tries to solve that particular problem. Another problem is the lack of ensuring the integrity of the encrypted data. This is experimentally supported by LUKS2 and its reference implementation (see the ``Authenticated data encryption'' section of \cite{ManCryptsetup}), but not implemented in our driver.
 
-\cite{Lewis2018} also compares different encryption systems, but only ones for full disk encryption. The comparison is mainly focused on the deployment process and user experience. After laying out the reasons for choosing Windows's built-in BitLocker (described in \autoref{chap:otherapproaches.bitlocker}), the authors describe the results of its deployment and the lessons learned during the process.
+\cite{Lewis2018} also compares different encryption systems, but only ones for full disk encryption. The comparison is mainly focused on the deployment process and user experience. After laying out the reasons for choosing Windows' built-in BitLocker (described in \autoref{chap:otherapproaches.bitlocker}), the authors describe the results of its deployment and the lessons learned during the process.
 
 \cite{Tsegaye2004} features a description of the Windows Driver Model, and also compares it to the kernel driver architecture of Linux. The comparison is accompanied by the implementation of a simple kernel driver with equivalent functionality for both operating systems. The example driver performs I/O from user to kernel buffers, showcasing important concepts for driver development.
 
@@ -19,7 +19,7 @@ As an addition to the Driver Verifier tool provided by Microsoft, other solution
 Relevant for \autoref{chap:performance} of this thesis, \cite{Traeger2008} introduces criteria for good benchmarks of file systems and storage. The authors explicitly mention encrypted storage and have useful suggestions for benchmarking these systems. These include comparing the encrypted file systems performance to a modified version, which works exactly the same except that no cryptographic actions are performed (sometimes called the null cipher).
 
 Finally, to thoroughly evaluate the performance of an encrypted storage system, one needs to test it under conditions that resemble the real world as good as possible. \cite{Riska2006}, \cite{Riska2006a}, \cite{Leung2008}, \cite{Riska2009}, and \cite{Sehgal2010} \todo{better selection?} present, describe, and analyse different disk drive workloads collected on real hardware.
-
+%
 %\begin{itemize}
 %	\item \cite{Tsegaye2004}: compares the driver models of Windows and Linux, both in theory and in practice (implements a simple driver for both architectures)
 %	\item \cite{Wright2003}: performance study of file encryption systems
@@ -31,9 +31,7 @@ Finally, to thoroughly evaluate the performance of an encrypted storage system, 
 %	\item \cite{Traeger2008}: presents criteria for good fs benchmarks, mentions encrypted storage explicitly
 %	\item \cite{Riska2006}, \cite{Riska2006a}, \cite{Leung2008}, \cite{Riska2009}, and \cite{Sehgal2010}: characterization/description of different disk drive workloads (maybe look at what Phoronix Suite/Postmark uses?)
 %\end{itemize}
-
-\todo{search for workload descriptions for more specific use cases? e.g. web browsing, gaming, \ldots}
-
+%
 %\cite{Agrawal2008}: SSD workload and performance examination
 %
 %\cite{Yadgar2021}: also SSD-specific, Table 1 has a good overview of ``trace repository'' papers, conclusion has a paragraph on the validity of using old workload traces

@@ -1,8 +1,6 @@
 \chapter{Design and Implementation of Our Approach}
 \label{chap:ourapproach}
-\todo{This chapter lays out the design and architecture of our Windows kernel driver.}\\
-\todo{Where there were multiple ways to do things, we will provide the reasons behind our choice.}\\
-\todo{This includes the choice for WDM as the used framework for the driver.}
+This chapter lays out the design and architecture of our Windows kernel driver. Where there were multiple ways to do things, we will provide the reasons behind our choice. This includes the choice for WDM as the used framework for the driver.
 
 \section{Rejected Driver Frameworks}
 \label{chap:ourapproach.rejected}
@@ -55,8 +53,8 @@ During the development process of our driver, we implemented a first prototype w
 We figured out why the decrypted file system was not recognized by Windows through debugging with WinDbg. Online research yielded the name of the driver responsible for recognizing FAT filesystems (our test LUKS2 volume contained a FAT32 filesystem): \texttt{fsrec.sys}. Using information from unofficial online documentation,\footnote{\label{fn:ourapproach.rejected.fsrecdoc} \url{http://www.codewarrior.cn/ntdoc/win2k/fsrec/index.htm}} we set a breakpoint at \texttt{fsrec}'s \texttt{IsFatVolume} routine. It receives the first sector of a volume and determines whether this matches the format of a FAT boot sector. When hitting the breakpoint and dumping the value of the function's parameter in WinDbg, it became clear that this routine received the encrypted first sector of the LUKS2 volume, consequently (and correctly) classifying it as a non-FAT volume.
 
 See the official documentation \cite{Fltmgr} for more information on the filter manager and minifilter drivers.
-
-\todo{\href{https://docs.microsoft.com/en-us/windows-hardware/drivers/ifs/how-file-system-filter-drivers-are-different-from-device-drivers}{this} and \href{https://docs.microsoft.com/en-us/windows-hardware/drivers/ifs/how-file-system-filter-drivers-are-similar-to-device-drivers}{this}?}
+%
+%\todo{\href{https://docs.microsoft.com/en-us/windows-hardware/drivers/ifs/how-file-system-filter-drivers-are-different-from-device-drivers}{this} and \href{https://docs.microsoft.com/en-us/windows-hardware/drivers/ifs/how-file-system-filter-drivers-are-similar-to-device-drivers}{this}?}
 
 \subsection{The Windows Driver Frameworks}
 \label{chap:ourapproach.rejected.wdf}
@@ -68,7 +66,7 @@ KMDF does not have this problems, but there were other factors that led to our d
 \begin{itemize}
 	\item We had previously tried another framework that simplified things though abstraction (see \autoref{chap:ourapproach.rejected.fltmgr}) and it had not worked. Therefore it seemed safer to do all the work ourselves, and in return be sure that the framework will not be a reason for failure.
 	\item By default, KMDF filter drivers pass all received IRPs to the next driver in the stack \cite{Wdf}. However, our planned approach was as follows: don't pass through anything at first, and then gradually during the development process allow more and more requests to pass through. This is still possible with KMDF, but more work than for a WDM driver.
-	\item One of the biggest selling points of using KMDF is that it handles PnP and Power IRPs for the driver. These are not really relevant to filter drivers, though (see \todo{\autoref{chap:ourapproach.final.otherrequests}} for how our final driver handles them). Therefore we would not gain that much by sacrificing total control for reduced complexity, because the hidden complexity is not that relevant in the first place.
+	\item One of the biggest selling points of using KMDF is that it handles PnP and Power IRPs for the driver. These are not really relevant to our driver, though (see \autoref{chap:ourapproach.final.otherrequests} for more information on these requests and how our driver handles them). Therefore we would not gain that much by sacrificing total control for reduced complexity, because the hidden complexity is not that relevant in the first place.
 	\item Finally, writing a WDM driver requires a more complete understanding of how the kernel's IRP-based I/O system works. We wanted to learn as much as possible, and for this purpose WDM seemed the better fit.
 \end{itemize}
 
@@ -80,17 +78,15 @@ Now that our WDM driver is finished, it would be interesting to compare it to an
 \label{chap:ourapproach.rejected.other}
 There also exist third-party user mode libraries for developing file system drivers, e.g. \url{https://github.com/billziss-gh/winfsp} or \url{https://github.com/dokan-dev/dokany}. However, these probably suffer the same drawbacks as UMDF drivers, and were therefore rejected.
 
-\section{The Final WDM Driver}
+\section{The Oknolynx Project}
 \label{chap:ourapproach.final}
-After deciding against the frameworks mentioned in the previous section, only WDM was left, which we thus settled for. This section will describe our approach and our considerations during its design in detail.
+After deciding against the frameworks mentioned in the previous section, only WDM was left, which we thus settled for. This section will describe our approach and our considerations during its design in detail. Where applicable, both read and write operations will be taken into consideration. See \autoref{chap:ourapproach.final.writeproblem} for why we ultimately decided to make all filtered partitions read-only.
 
-\todo{refer to \autoref{app:onlinereferences} for the source code of both components}
-
-Where applicable, both read and write operations will be taken into consideration. See \autoref{chap:ourapproach.final.writeproblem} for why we ultimately decided to make all filtered partitions read-only.
+As explained in the following section, there are two components that work together to enable LUKS2 support on Windows. Together, the two components form the \emph{Oknolynx} project.\footnote{\label{fn:ourapproach.final.oknolynx} ``Okno'' means window in Czech, and the German word for lynx is ``Luchs''. The name therefore symbolizes the combination of LUKS(2) and Windows.} \autoref{app:onlinereferences} explains how to obtain a copy of Oknolynx' source code.
 
 \subsection{Architecture}
 \label{chap:ourapproach.final.architecture}
-\todo{<PROJECT NAME>} consists of two components, one in kernel and one in user mode: the \texttt{luks2flt.sys} kernel driver, and the \texttt{luks2filterstart.exe} program to activate the filter for a volume. \autoref{fig:ourapproach.final.communication} shows this basic communication and architecture.
+Oknolynx consists of two components, one in kernel and one in user mode: the \texttt{luks2flt} kernel driver, and the \texttt{luks2filterstart.exe} program to activate the filter for a volume. \autoref{fig:ourapproach.final.communication} shows this basic communication and architecture.
 
 \begin{figure}
 	\center
@@ -115,16 +111,16 @@ Where applicable, both read and write operations will be taken into consideratio
 		\draw[draw=none] (root.east) -- (mid) node[midway, anchor=north]              {\textit{IRPs for}};
 	\end{tikzpicture}
 	\caption[
-		Basic communication and architecture of \todo{<PROJECT NAME>}
+		Basic communication and architecture of Oknolynx
 	]{
-		Basic communication and architecture of \todo{<PROJECT NAME>}. To activate the filtering, \texttt{luks2filterstart} sends a custom IOCTL to a device, in response to which \texttt{luks2flt} starts filtering requests.
+		Basic communication and architecture of Oknolynx. To activate the filtering, \texttt{luks2filterstart.exe} sends a custom IOCTL to a device, in response to which \texttt{luks2flt} starts filtering requests.
 	}
 	\label{fig:ourapproach.final.communication}
 \end{figure}
 
-\texttt{luks2flt} is a WDM lower filter driver that attaches to all devices in the Volume class. This is the same mechanism that the BitLocker filter driver uses. It attaches to all volumes at boot time, but only starts filtering after receiving the command to do so from \texttt{luks2filterstart.exe} (see \autoref{chap:ourapproach.final.init} for the reasons behind this choice and other details). Compared to VeraCrypt and the Linux kernel implementation of LUKS2, this is a completely different approach, as these both create a new device instead of filtering requests for an existing one.
+\texttt{luks2filterstart.exe} is a program written in Rust that reads a password from the user and tries to derive the LUKS2 master key from it. For the key derivation, as described in \autoref{chap:background.luks2.unlocking}, it uses our helper library (see \autoref{chap:background.luks2.helperlib}). The decrypted master key, together with other relevant metadata, is then sent to \texttt{luks2flt} using a custom IOCTL, \texttt{IOCTL\_DISK\_SET\_LUKS2\_INFO}. This process is described in more detail in \autoref{chap:ourapproach.final.init}.
 
-\todo{mention that luks2filterstart is written in Rust and reads the password from the user}
+\texttt{luks2flt} is a WDM lower filter driver that attaches to all devices in the Volume class. This is the same mechanism that the BitLocker filter driver uses. It attaches to all volumes at boot time, but only starts filtering after receiving the command to do so from \texttt{luks2filterstart.exe} (see \autoref{chap:ourapproach.final.init} for the reasons behind this choice and other details). Compared to VeraCrypt and the Linux kernel implementation of LUKS2, this is a completely different approach, as these both create a new device instead of filtering requests for an existing one.
 
 Another important part of the architecture is where the actual cryptographic work happens. Both LUKS2's reference implementation and BitLocker let the OS's crypto providers do the work, VeraCrypt ships their own implementations. Because the API that BitLocker uses is not publicly documented (and there seems to be no public alternative), we decided against using it. When researching the topic of implementing AES, we found that the general consensus seems to be that it is seldom a good idea to ``roll your own crypto.'' This is why we tried to link \texttt{luks2flt} against existing cryptography libraries. To complicate things, these would need to be compiled specifically for being called from Windows kernel mode; the distributed library binaries do not work. We tried getting the following two libraries to work:
 \begin{descitemize}
@@ -199,7 +195,7 @@ This data is sent along with the IOCTL in an input buffer. The first byte of the
 
 To keep track of these values, \texttt{luks2flt} stores them in something called the \emph{device extension}. Every device object contains a pointer to this driver-defined data structure. Its purpose is to store information or objects that all driver routines operating on the device need access to \cite{Kerneldriver}.
 
-At this point we want to note the following: it would also be possible to store most of the information sent together with the IOCTL in the registry. Storing configuration this way is encouraged by Microsoft: at startup, every driver receives a string containing the path to its Software key \cite{Wdk}. One could even store a list of the system's LUKS2 volumes in the registry. This would eliminate the aforementioned problem that \texttt{luks2flt} does not know yet which volumes it should attach to when the device stack is built. However, \texttt{luks2filterstart.exe} would still need to send the key to the driver, as this information should not be stored in the registry. The key should always be freshly derived from a password entered by the user.
+At this point we want to note the following: it would also be possible to store most of the information sent with \texttt{IOCTL\_DISK\_SET\_LUKS2\_INFO} in the registry. Storing configuration this way is encouraged by Microsoft: at startup, every driver receives a string containing the path to its Software key \cite{Wdk}. One could even store a list of the system's LUKS2 volumes in the registry. This would eliminate the aforementioned problem that \texttt{luks2flt} does not know yet which volumes it should attach to when the device stack is built. However, \texttt{luks2filterstart.exe} would still need to send the key to the driver, as this information should not be stored in the registry. The key should always be freshly derived from a password entered by the user.
 
 \subsection{The \texttt{DriverEntry} Routine and IRP Dispatching}
 \label{chap:ourapproach.final.genericdispatch}
@@ -254,12 +250,12 @@ The specification of the BitLocker driver's dispatch routines can be found in \a
 	]{
 		IRP flow through \texttt{luks2flt}'s dispatch routines. All IRPs first arrive at the generic dispatch routine. If filtering has not been enabled for the device, all IRPs (except for two special cases described shortly) are passed on to the next-lower driver in the device stack. If it has been enabled, IRPs that have a dispatch routine corresponding to their major function are sent to this routine. All other IRPs are rejected.\\
 		\texttt{DispatchWrite} is greyed out because while an implementation exists, we disabled write access and fail Write IRPs. See \autoref{chap:ourapproach.final.writeproblem} for the reasons why we made this decision.\\
-		If a PnP remove request or the IOCTL send by \texttt{luks2filterstart.exe} arrives, it is always handled by \texttt{DispatchPnp} or \texttt{DispatchDevControl}, respectively. These routines for filtered devices already implement handling those requests, and their implementations work just as well for non-filtered devices.
+		If a PnP remove request or \texttt{IOCTL\_DISK\_SET\_LUKS2\_INFO} arrives, it is always handled by \texttt{DispatchPnp} or \texttt{DispatchDevControl}, respectively. These routines for filtered devices already implement handling those requests, and their implementations work just as well for non-filtered devices.
 	}
 	\label{fig:ourapproach.final.irpdispatch}
 \end{figure}
 
-The handling of IRPs with allowed major functions for filtered devices will be described in the following \todo{two} sections.
+The handling of IRPs with allowed major functions for filtered devices will be described in the following two sections.
 
 \subsection{Handling Read and Write Requests}
 \label{chap:ourapproach.final.de_encrypting}
@@ -269,7 +265,7 @@ Both Read and Write IRPs need adjusting to the read/write offset: all drivers ab
 
 An example: a program in user mode wants to read the first sector of an unlocked LUKS2 volume. This request reaches \texttt{luks2flt} as a Read IRP with an offset of zero bytes. On disk however there are (in this example) 16 mebibytes of LUKS2 metadata before the first sector of encrypted data. The read offset therefore needs to be set to 16,777,216 bytes, so that the lower-level drivers read the correct, wanted data.
 
-For Write requests, only one more task needs to be done: encrypting the received plaintext data before it is written to disk. Recall from \autoref{chap:background.luks2.using} that LUKS2 supports many encryption algorithms, but \texttt{luks2flt} only supports \texttt{aes-xts-plain64}. The encryption is therefore always done using our own implementation of AES-XTS (\todo{todo}).
+For Write requests, only one more task needs to be done: encrypting the received plaintext data before it is written to disk. Recall from \autoref{chap:background.luks2.using} that LUKS2 supports many encryption algorithms, but \texttt{luks2flt} only supports \texttt{aes-xts-plain64}. The encryption is therefore always done using our own implementation of AES-XTS (see the end of this section).
 
 Read requests require one more step, because when the IRP first arrives at our driver, no data has actually been read yet. That is the duty of the drivers below \texttt{luks2flt} in the volume's device stack. We therefore need to wait until these have completed all their work for this IRP. Completion routines, which were introduced in \autoref{chap:background.kerneldriver.concepts}, were explicitly designed for this purpose. After shifting the read offset as explained above, the Read dispatch routine registers a completion routine. It will be called when the lower-level drivers have successfully completed the IRP.\footnote{\label{fn:ourapproach.final.failedlowerlevel} Should a lower-level driver fail the IRP, our completion routine will not be called, as there is nothing to decrypt.} The only job of the completion routine is to decrypt the read data. Again, this is accomplished using our AES-XTS implementation.
 
@@ -318,7 +314,7 @@ DecryptReadBuffer(
 \label{chap:ourapproach.final.otherrequests}
 Although Read and Write IRPs are the most important and interesting, some other IRP types also need to be supported for the driver to work. In this section, we will describe our approach to handling these other requests when filtering is active. All IRPs with major functions that are not explicitly mentioned in the following are rejected by \texttt{luks2flt}.
 
-\paragraph{Device Control Requests} The dispatch routine for device control requests handles and responds to all IOCTLs that might be sent to a volume. There are a lot of different IOCTLs\footnote{\label{fn:ourapproach.final.ioctls} See \url{http://ioctls.net} for an unofficial list. The IOCTLs starting with \texttt{IOCTL\_DISK}, \texttt{IOCTL\_STORAGE}, \texttt{IOCTL\_VOLUME}, and \texttt{IOCTL\_MOUNTDEV} are relevant for volume devices.}, which makes this a tedious task.\footnote{\label{fn:ourapproach.final.veracryptioctls} The Device Control dispatch routine of the VeraCrypt driver stretches over 1,000 lines of code and handles 38 different IOCTLs (l. 833 to 1889 in \texttt{src/Driver/Ntdriver.c}).} Aside from handling the aforementioned IOCTL sent by \texttt{luks2filterstart.exe}, \texttt{IOCTL\_DISK\_SET\_LUKS2\_INFO}, we only implemented support for the IOCTLs that seemed to be necessary for the volume to function correctly.
+\paragraph{Device Control Requests} The dispatch routine for device control requests handles and responds to all IOCTLs that might be sent to a volume. There are a lot of different IOCTLs\footnote{\label{fn:ourapproach.final.ioctls} See \url{http://ioctls.net} for an unofficial list. The IOCTLs starting with \texttt{IOCTL\_DISK}, \texttt{IOCTL\_STORAGE}, \texttt{IOCTL\_VOLUME}, and \texttt{IOCTL\_MOUNTDEV} are relevant for volume devices.}, which makes this a tedious task.\footnote{\label{fn:ourapproach.final.veracryptioctls} The Device Control dispatch routine of the VeraCrypt driver stretches over 1,000 lines of code and handles 38 different IOCTLs (l. 833 to 1889 in \texttt{src/Driver/Ntdriver.c}).} Aside from handling the aforementioned \texttt{IOCTL\_DISK\_SET\_LUKS2\_INFO}, we only implemented support for the IOCTLs that seemed to be necessary for the volume to function correctly.
 
 If \texttt{luks2flt} receives \texttt{IOCTL\_DISK\_GET\_LENGTH\_INFO}, \texttt{IOCTL\_DISK\_GET\_PARTITION\_INFO}, \texttt{IOCTL\_DISK\_GET\_PARTITION\_INFO\_EX}, or \texttt{IOCTL\_VOLUME\_GET\_VOLUME\_DISK\_EXTENTS}, it registers a completion routine. The responses to all of these include information about the starting offset and/or length of the volume. The offset and length of the decrypted data on disk are different from the values for the underlying volume because of the LUKS2 metadata. The completion routine therefore modifies these values in the responses sent by the lower-level drivers.
 
@@ -358,6 +354,8 @@ Some of the existing minor function codes must be supported by all (non-legacy) 
 \label{chap:ourapproach.final.writeproblem}
 \todo{corrupted volume, describe debugging process and findings, include that one photo of}\\\todo{``the file who lived''}
 
+\todo{if possible, a screenshot of a corrupted volume in Windows explorer would be great}
+
 \todo{speculation: the IOCTLs are the reason. although we fail all IOCTLs we don't support. maybe modifying the volume offset is not a good idea?}
 
 \section{Security and Privacy Considerations}
@@ -366,7 +364,7 @@ Some of the existing minor function codes must be supported by all (non-legacy) 
 
 \todo{security:} to communicate with \texttt{luks2flt} (only possible via IOCTLs), a theoretical attacker would need to already have administrator rights. They are required to open a device handle, which is needed for sending IOCTLs. Therefore, any possibly existing security vulnerabilities are of low impact (if an adversary has admin rights, the system is already more or less completely compromised). Of course, we still were careful not to introduce any vulnerabilities.
 
-\todo{privacy:} explain what the other implementations do and that we (could) do the same, but don't do it as consequently. iirc luks2flt zeros out some memory on device deletion?
+\todo{privacy:} explain what the other implementations do and that we (could) do the same, but don't do it (yet) because this was not our focus.
 
 \todo{\url{https://crates.io/crates/secrecy} for luks2filterstart}
 

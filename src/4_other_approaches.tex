@@ -228,8 +228,8 @@ Similar to \texttt{dm-crypt}, the VeraCrypt driver uses queues to manage incomin
 \end{descitemize}
 
 When no longer needed, sensitive data in memory, such as a volume's password, is overwritten with zeros. This is done using the \texttt{RtlSecureZeroMemory} function,\footnote{\label{fn:otherapproaches.veracrypt.zeromem} See l. 400 in \texttt{src/Common/Tcdefs.h} and l. 2647f. in \texttt{Ntdriver.c}.} which is guaranteed not to be optimized out by the compiler \cite{Wdk}.
-
-\todo{appendix on how to compile veracrypt in debug mode using VS 2019?}
+%
+%\todo{appendix on how to compile veracrypt in debug mode using VS 2019?}
 
 \section{BitLocker}
 \label{chap:otherapproaches.bitlocker}

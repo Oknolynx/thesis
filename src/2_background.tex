@@ -1,6 +1,6 @@
 \chapter{Background}
 \label{chap:background}
-\todo{todo?}
+This chapter introduces information and concepts that are needed to understand both the problem this thesis solves and the details of our solution. It describes the encryption standard implemented by our driver and details the concepts needed for Windows kernel driver development.
 
 \section{LUKS2 Disk Encryption}
 \label{chap:background.luks2}
@@ -9,6 +9,7 @@
 The differences between the original LUKS and LUKS2 are minor. According to \cite{Broz2018}, LUKS2 adds ``more flexible ways of storing metadata, redundant information to provide recovery in the case of corruption in a metadata area, and an interface to store externally managed metadata for integration with other tools.'' Practically, this means that LUKS2 has a different on-disk layout and, among other things, supports more password hashing algorithms (more precisely, password-based key derivation functions).
 
 \subsection{Our LUKS2 Cryptographic Helper Library}
+\label{chap:background.luks2.helperlib}
 The reference implementation\footnote{\label{fn:background.luks2.referenceimpl} \url{https://gitlab.com/cryptsetup/cryptsetup}, see \autoref{chap:otherapproaches.linux.cryptsetup}.} is designed only for usage on Linux, which is why we developed a new library in Rust for interacting with LUKS2 partitions. This is not a full equivalent, but only a cross-platform helper. Its task is to take care of all the cryptographic work needed before actually decrypting and encrypting data (more precisely, the process described in \autoref{chap:background.luks2.unlocking}). Notably, it lacks the following features of the reference implementation:
 \begin{itemize}[label=\textbf{--}]
 	\item formatting new LUKS2 partitions,
@@ -561,7 +562,7 @@ This shows that filter drivers can be places either above the function driver (u
 	\label{fig:background.kerneldriver.devnode}
 \end{figure}
 
-As already hinted at in the description of \autoref{fig:background.kerneldriver.devicestack}, the registry is responsible for storing the information that governs driver loading. Both which drivers are loaded and the order they are loaded in are configured this way. Basically, it is described how exactly the device nodes should be built. \autoref{tbl:background.kerneldriver.registrykeys} lists the registry keys that, together with their subkeys, are relevant for the configuration. \todo{mention that \autoref{chap:ourapproach.final} explains adding the required registry entries via INF files}
+As already hinted at in the description of \autoref{fig:background.kerneldriver.devicestack}, the registry is responsible for storing the information that governs driver loading. Both which drivers are loaded and the order they are loaded in are configured this way. Basically, it is described how exactly the device nodes should be built. \autoref{tbl:background.kerneldriver.registrykeys} lists the registry keys that, together with their subkeys, are relevant for the configuration. In \autoref{chap:ourapproach.final.install}, we will see how some of these registry entries are set up at driver installation.
 
 \begin{table}[htb!]
 	\center
@@ -926,14 +927,24 @@ The already mentioned completion routines are a way for drivers to intercept the
 \label{chap:background.kerneldriver.debugging}
 Debugging a program in kernel mode is not as simple as debugging most user mode applications, because it is part of the OS. For example, stopping the execution, e.g. via break points, halts the whole computer. This section will introduce the tools necessary to debug a Windows kernel component.
 
-There are two official programs for kernel debugging, kd and WinDbg. They are essentially equivalent, with the former being a console debugger and the latter a GUI debugger. Out of personal preference, we will use WinDbg in this thesis. \cite{Yosifovich2017} also uses WinDbg for exploring the internals of Windows, including a lot of screenshots and explaining many useful commands.\footnote{\label{fn:background.kerneldriver.windbg} A list of common commands can also be found at \url{http://windbg.info/doc/1-common-cmds.html}.} \todo{You can also find screenshots of WinDbg from the process of writing and}\\\todo{debugging our driver in \autoref{chap:ourapproach}.}
+There are two official programs for kernel debugging, kd and WinDbg. They are essentially equivalent, with the former being a console debugger and the latter a GUI debugger. Out of personal preference, we will use WinDbg in this thesis. \cite{Yosifovich2017} also uses WinDbg for exploring the internals of Windows, including a lot of screenshots and explaining many useful commands.\footnote{\label{fn:background.kerneldriver.windbg} A list of common commands can also be found at \url{http://windbg.info/doc/1-common-cmds.html}.} See \autoref{fig:background.kerneldriver.windbg} and \autoref{fig:ourapproach.final.windbgdispatch} for screenshots from WinDbg.
+
+\begin{figure}[htb!]
+	\center
+	\todo{otherapproaches.veracrypt.devstack.png but for a volume with luks2flt attached?}
+	% \includegraphics[scale=0.35]{../img/otherapproaches.veracrypt.devstack.png}
+	\caption[
+		WinDbg in remote kernel debugging mode
+	]{
+		WinDbg in remote kernel debugging mode. \todo{todo}
+	}
+	\label{fig:background.kerneldriver.windbg}
+\end{figure}
 
 There are different ways to use WinDbg \cite{Yosifovich2017}:
 \begin{itemize}
 	\item as a debugger for user mode programs. It can be used for viewing and changing the contents of the program's memory, setting breakpoints, and other common debugging techniques. WinDbg can also attach to an already running process.
-	\item to view a crash dump file that Windows created during a system crash. This contains parts of the RAM contents at the time of a crash.\footnote{\label{fn:background.kerneldriver.crashdump} If enabled, the dump file is usually located at \texttt{C:\textbackslash Windows\textbackslash MEMORY.DMP}. It can also be configured which parts of the RAM shall be included in the file, e.g. all used physical memory or only all used kernel memory.} Using this, one can find out more about what exactly caused the crash. The available commands are a subset of what would have been available if WinDbg had been debugging the operating system when the crash happened. For example, the call stack of the function that caused the crash can be displayed. Everything that involves running code or reading and writing from or to certain locations, e.g. I/O ports or some CPU registers, is not possible in this mode.
+	\item to view a crash dump file that Windows created during a system crash. This contains parts of the RAM contents at the time of a crash.\footnote{\label{fn:background.kerneldriver.crashdump} If enabled, the dump file is usually located at \texttt{C:\textbackslash Windows\textbackslash MEMORY.DMP} It can also be configured which parts of the RAM shall be included in the file, e.g. all used physical memory or only all used kernel memory.} Using this, one can find out more about what exactly caused the crash. The available commands are a subset of what would have been available if WinDbg had been debugging the operating system when the crash happened. For example, the call stack of the function that caused the crash can be displayed. Everything that involves running code or reading and writing from or to certain locations, e.g. I/O ports or some CPU registers, is not possible in this mode.
 	\item as a local kernel mode debugger. If booted in debug mode, WinDbg can attach to a currently running instance of Windows. Only a subset of the normally available commands can be used, and some advanced debugging such as setting breakpoints and dumping memory do not work. An alternative for local kernel debugging is the Sysinternals LiveKd program. This simulates a crash dump file using the contents of physical memory, and in contrast to WinDbg, it can dump memory.
 	\item as a remote kernel mode debugger. This is the mode of operation with the most possibilities, but also the one that is the most complicated and expensive to set up. It requires two computers, a target computer, running the OS to be debugged, and a host computer, that uses WinDbg to debug the target. Because WinDbg does not run under the OS that is being debugged, the target computer can be completely halted and the current system state can be examined. The connection between the two computers can be via USB or the local network.\footnote{\label{background.kerneldriver.vmdebugging} Debugging via network can also be used to debug a virtual machine, if the hardware for a second real computer is not available. See \href{https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/setting-up-network-debugging-of-a-virtual-machine-host}{the Windows Debugging Tools documentation} for more.}
 \end{itemize}
-
-\todo{screenshot}
