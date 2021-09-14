@@ -11,7 +11,7 @@ The differences between the original LUKS and LUKS2 are minor. According to \cit
 \subsection{Our LUKS2 Cryptographic Helper Library}
 \label{chap:background.luks2.helperlib}
 The reference implementation\footnote{\label{fn:background.luks2.referenceimpl} \url{https://gitlab.com/cryptsetup/cryptsetup}, see \autoref{chap:otherapproaches.linux.cryptsetup}.} is designed only for usage on Linux, which is why we developed a new library in Rust for interacting with LUKS2 partitions. This is not a full equivalent, but only a cross-platform helper. Its task is to take care of all the cryptographic work needed before actually decrypting and encrypting data (more precisely, the process described in \autoref{chap:background.luks2.unlocking}). Notably, it lacks the following features of the reference implementation:
-\begin{itemize}[label=\textbf{--}]
+\begin{itemize}
 	\item formatting new LUKS2 partitions,
 	\item modifying or repairing existing LUKS2 partitions,
 	\item converting a LUKS partition to a LUKS2 partition,
@@ -514,7 +514,7 @@ In this model, the control over a device is not concentrated at one single drive
 	\caption[
 		Example of a device stack for a storage volume
 	]{
-		Example of a device stack for a storage volume (Screenshot from device properties in Windows Device Manager). The official descriptions of the drivers listed in this example are, from top to bottom: ``Volume Shadow Copy driver'', ``Volume driver'', ``I/O rate control filter'', ``BitLocker Drive Encryption Driver'', and ``Volume Manager Driver''. As can be seen under the appropriate registry key, \texttt{fvevol} and \texttt{iorate} are lower filter drivers and \texttt{volsnap} is an upper filter driver. This leaves \texttt{volume} as the function driver and \texttt{volmgr} as the bus driver.\\
+		Example of a device stack for a storage volume (screenshot from device properties in Windows Device Manager). The official descriptions of the drivers listed in this example are, from top to bottom: ``Volume Shadow Copy driver'', ``Volume driver'', ``I/O rate control filter'', ``BitLocker Drive Encryption Driver'', and ``Volume Manager Driver''. As can be seen under the appropriate registry key, \texttt{fvevol} and \texttt{iorate} are lower filter drivers and \texttt{volsnap} is an upper filter driver. This leaves \texttt{volume} as the function driver and \texttt{volmgr} as the bus driver.\\
 		Later on in this section we will talk about the registry's role in driver management in more detail. See \autoref{fig:background.kerneldriver.registry} for what key to use and how the values stored under that key may look.
 	}
 	\label{fig:background.kerneldriver.devicestack}
@@ -604,7 +604,7 @@ Examples of subkeys of each of these keys are shown in \autoref{fig:background.k
 	\caption[
 		Example contents of a Hardware, Class, and Software subkey
 	]{
-		Example contents of a Hardware, Class, and Software subkey (Screenshots from the Windows Registry Editor). These are all relevant for the device whose device stack is shown in \autoref{fig:background.kerneldriver.devicestack}. As already partly discussed there, the configured values match the final device stack: the \texttt{Service} value under the Hardware subkey designates \texttt{volume} as the function driver; the drivers listed in the \texttt{LowerFilters} and \texttt{UpperFilters} values of the Class subkey are indeed loaded before or after \texttt{volume}, respectively (also note that they are loaded, from bottom to top, in the order listed); the \texttt{ImagePath} under the Software subkey shows the path to one of the driver's \texttt{.sys} file.\\
+		Example contents of a Hardware, Class, and Software subkey (screenshots from the Windows Registry Editor). These are all relevant for the device whose device stack is shown in \autoref{fig:background.kerneldriver.devicestack}. As already partly discussed there, the configured values match the final device stack: the \texttt{Service} value under the Hardware subkey designates \texttt{volume} as the function driver; the drivers listed in the \texttt{LowerFilters} and \texttt{UpperFilters} values of the Class subkey are indeed loaded before or after \texttt{volume}, respectively (also note that they are loaded, from bottom to top, in the order listed); the \texttt{ImagePath} under the Software subkey shows the path to one of the driver's \texttt{.sys} file.\\
 		The \texttt{readyboost} driver is listed as a lower filter, but does not appear in the device stack, probably because it decided not to be part of it. This makes sense, because it is responsible for the ReadyBoost technology, which is designed for SD cards and USB sticks, and not hard disk volumes. See \cite{Yosifovich2017} for more information on this technology.
 	}
 	\label{fig:background.kerneldriver.registry}

@@ -214,7 +214,7 @@ The specification of the BitLocker driver's dispatch routines can be found in \a
 	\caption[
 		\texttt{luks2flt}'s registered routines
 	]{
-		\texttt{luks2flt}'s registered routines (Screenshot from WinDbg). This is part of the output that WinDbg shows for the \texttt{!drvobj luks2flt 7} command. The routines that were registered during initialization are shown: its unload, \texttt{AddDevice}, and IRP dispatch routines. IRPs of all major functions are handled by a generic dispatch routine, whose logic is described in \autoref{fig:ourapproach.final.irpdispatch}.
+		\texttt{luks2flt}'s registered routines (screenshot from WinDbg). This is part of the output that WinDbg shows for the \texttt{!drvobj luks2flt 7} command. The routines that were registered during initialization are shown: its unload, \texttt{AddDevice}, and IRP dispatch routines. IRPs of all major functions are handled by a generic dispatch routine, whose logic is described in \autoref{fig:ourapproach.final.irpdispatch}.
 	}
 	\label{fig:ourapproach.final.windbgdispatch}
 \end{figure}
@@ -352,11 +352,41 @@ Some of the existing minor function codes must be supported by all (non-legacy) 
 
 \subsection{The Problem With Writing to a Volume}
 \label{chap:ourapproach.final.writeproblem}
-\todo{corrupted volume, describe debugging process and findings, include that one photo of}\\\todo{``the file who lived''}
+As already hinted at, enabling write access in our driver caused some problems. After about a minute of working with the decrypted files, they disappeared and instead files with strange-looking names and incorrect sizes were displayed. An example of a corrupted volume can be seen in \autoref{fig:ourapproach.final.writecorruption}. It also describes a possible set of steps to reproduce the corruption. However, in our tests it was enough to just wait for about a minute without interacting with the volume at all for the corruption to appear.
 
-\todo{if possible, a screenshot of a corrupted volume in Windows explorer would be great}
+\begin{figure}[htb!]
+	\center
+	\includegraphics[scale=0.47]{../img/ourapproach.final.writecorruption.png}
+	\caption[
+		Corrupted volume after enabling write access
+	]{
+		Corrupted volume after enabling write access (screenshot from Windows Explorer). The volume originally contained one small text file. We then changed the content of this file, created a new folder, and there created another text file. After closing and reopening the text files and refreshing the view in Windows Explorer, the files and folders disappeared. Instead, multiple folders and files with seemingly random names, sizes and creation times were displayed. The volume label however remained correct. Trying to open a file resulted in the following error message: ``The specified path does not exist.'' Trying to open a folder failed with ``The filename, directory name, or volume label syntax is incorrect.''
+	}
+	\label{fig:ourapproach.final.writecorruption}
+\end{figure}
 
-\todo{speculation: the IOCTLs are the reason. although we fail all IOCTLs we don't support. maybe modifying the volume offset is not a good idea?}
+To limit the number of possible causes, we disabled every IRP major function that was not needed for basic volume operation. This left mostly those described in \autoref{chap:ourapproach.final.de_encrypting} and \autoref{chap:ourapproach.final.otherrequests}. We also changed \texttt{luks2flt} to reject all device control requests, except for a few basic ones (again, mostly those described in \autoref{chap:ourapproach.final.otherrequests}). However, even with this most restricted set of allowed operations, the corruption still occurred. As soon as we disabled Write access, we could not reproduce the corruption.
+
+Interestingly, the corruption seems to follow a pattern. In tests using a virtual machine we always used the same virtual disk, backing it up before corruption and restoring it afterwards. Every time the volume got corrupted, there were multiple folders and files with the same name and, in case of the files, the same size. For example, the file highlighted in \autoref{fig:ourapproach.final.writecorruption}, with an alleged size of 3.84 gigabytes, was always there and always had this size. However, there were also other files and folders that were different each time.
+
+The findings from \autoref{fig:ourapproach.final.writesurvivor} give a clue for what might be the problem: the actual files seem to still be there, but something causes other, actually non-existent files to be shown. Our suspicion is that only the filesystem's metadata gets corrupted, leading to confusion of what the contents of the volume are. This would fit with the observation that the ``real'' files still seem to be there.
+
+\begin{figure}[htb!]
+	\center
+	\includegraphics[scale=0.42]{../img/ourapproach.final.writesurvivor.png}
+	\caption[
+		Corrupted but mountable volume after enabling write access
+	]{
+		Corrupted but mountable volume after enabling write access (photographed output of the Linux \texttt{mount} command). After one of our tests that lead to the corruption of a LUKS2 volume, we tried unlocking and mounting the volume in Linux. The unlocking worked without a problem, but during the mount process multiple warnings and errors occurred. These can partially be seen in the photo. Listing the contents of the volume showed several corrupted files, similar to Windows Explorer, but also one text file that we created. Its file size was reported as zero bytes, which was correct, as we only created the file and did not write any content to it. The file creation date as well as the file name were also correct.
+	}
+	\label{fig:ourapproach.final.writesurvivor}
+\end{figure}
+
+This theory is also backed by findings obtained using the \texttt{fatcat} tool.\footnote{\label{fn:ourapproach.final.fatcat} \url{https://github.com/Gregwar/fatcat}} This is a forensic tool for examining FAT filesystems, because we used FAT32 inside LUKS2 for our tests. First explorative usage of it showed to things: firstly, it was able to recover the files (including content, not only names) and folders we created before the corruption happened (similar to \autoref{fig:ourapproach.final.writesurvivor}); and secondly, it reported that the two copies of filesystem metadata blocks stored on the volume did not match.\footnote{\label{fn:ourapproach.final.fatdiff} It printed out the contents of both blocks in hexadecimal form, and in fact, they were completely different.}
+
+As to why the metadata might get corrupted, we still lack a theory. It could be that some IRP major functions or IOCTLs that we categorized as harmless actually are the cause of the problem. Maybe the filesystem driver obtains wrong information about e.g. the volume's size or offset through one of the still allowed requests. If the cause is a required type of IRP or IOCTL, it cannot be ruled out by exclusion.
+
+To completely verify our assumption that only the metadata becomes corrupted and to hopefully find the error cause, we would need to take a more thorough look at the metadata. A first step would be parsing the metadata format of the corrupted FAT32 partition and inspecting the stored values. Regrettably, we lack the time for such an extensive research. Therefore, we note that this issue needs more investigation, and for now leave the write support disabled.
 
 \section{Security and Privacy Considerations}
 \label{chap:ourapproach.security}

@@ -276,7 +276,7 @@ Looking at \texttt{cryptsetup}'s implementation of its support for BitLocker vol
 	\caption[
 		Properties of \texttt{fvevol.sys}
 	]{
-		Properties of \texttt{fvevol.sys} (Screenshot from Windows Explorer). This file is usually located at \texttt{C:\textbackslash Windows\textbackslash System32\textbackslash drivers\textbackslash fvevol.sys}.
+		Properties of \texttt{fvevol.sys} (screenshot from Windows Explorer). This file is usually located at \texttt{C:\textbackslash Windows\textbackslash System32\textbackslash drivers\textbackslash fvevol.sys}.
 	}
 	\label{fig:otherapproaches.bitlocker.fvevol}
 \end{figure}
@@ -289,7 +289,7 @@ Looking at \texttt{cryptsetup}'s implementation of its support for BitLocker vol
 	\caption[
 		Assembly and disassembly of parts of the \texttt{DriverEntry} function
 	]{
-		Assembly and disassembly of parts of the \texttt{DriverEntry} function (Screenshot from \href{https://www.ghidra-sre.org}{Ghidra}). Shown here is the definition of which function of the driver will be called when an IRP passes through it. These are called dispatch routines. The driver has to specify the different dispatch routine for each IRP major function. See \autoref{chap:ourapproach.final.genericdispatch} for more details on this initialization process.\\
+		Assembly and disassembly of parts of the \texttt{DriverEntry} function (screenshot from \href{https://www.ghidra-sre.org}{Ghidra}). Shown here is the definition of which function of the driver will be called when an IRP passes through it. These are called dispatch routines. The driver has to specify the different dispatch routine for each IRP major function. See \autoref{chap:ourapproach.final.genericdispatch} for more details on this initialization process.\\
 		\texttt{fvevol.sys} only defines specific dispatch routines for the Create, Close, Cleanup, Read, Write, DeviceControl, Power, and PnP major functions. All others use a generic routine, which usually just forwards the IRP to the next driver in the stack (except for some error cases, where it fails the request).
 	}
 	\label{fig:otherapproaches.bitlocker.driverentry}
@@ -303,7 +303,7 @@ From \autoref{fig:otherapproaches.bitlocker.xtsdecrypt} (and looking at more dis
 	\caption[
 		Assembly and disassembly of the \texttt{FveAesXtsDecrypt} function
 	]{
-		Assembly and disassembly of the \texttt{FveAesXtsDecrypt} function (Screenshot from \href{https://www.ghidra-sre.org}{Ghidra}). \texttt{fvevol.sys} uses functions from \texttt{ksecdd.sys}, which is the ``Kernel Mode Security Support Provider Interface'', for all cryptographic functionality. Shown here is the implementation of AES-XTS decryption, which also makes use of this interface.
+		Assembly and disassembly of the \texttt{FveAesXtsDecrypt} function (screenshot from \href{https://www.ghidra-sre.org}{Ghidra}). \texttt{fvevol.sys} uses functions from \texttt{ksecdd.sys}, which is the ``Kernel Mode Security Support Provider Interface'', for all cryptographic functionality. Shown here is the implementation of AES-XTS decryption, which also makes use of this interface.
 	}
 	\label{fig:otherapproaches.bitlocker.xtsdecrypt}
 \end{figure}
@@ -316,7 +316,7 @@ According to \cite{Kornblum2009}, ``Reverse engineering parts of the BitLocker s
 	\caption[
 		Assembly and disassembly of the \texttt{DeleteKey} function
 	]{
-		Assembly and disassembly of the \texttt{DeleteKey} function (Screenshot from \href{https://www.ghidra-sre.org}{Ghidra}). The \texttt{FveDestroyCryptoKeyData} function notifies the \texttt{ksecdd.sys} driver that the key is no longer needed. \texttt{FveSecureZeroAndFlush} zeros out the key data and also calls \texttt{KeSweepLocalCaches}, which is not documented (but probably flushes the key data from the CPU's caches). \texttt{ExFreePoolWithTag} is basically a regular C \texttt{free} but for the Windows kernel.
+		Assembly and disassembly of the \texttt{DeleteKey} function (screenshot from \href{https://www.ghidra-sre.org}{Ghidra}). The \texttt{FveDestroyCryptoKeyData} function notifies the \texttt{ksecdd.sys} driver that the key is no longer needed. \texttt{FveSecureZeroAndFlush} zeros out the key data and also calls \texttt{KeSweepLocalCaches}, which is not documented (but probably flushes the key data from the CPU's caches). \texttt{ExFreePoolWithTag} is basically a regular C \texttt{free} but for the Windows kernel.
 	}
 	\label{fig:otherapproaches.bitlocker.deletekey}
 \end{figure}
