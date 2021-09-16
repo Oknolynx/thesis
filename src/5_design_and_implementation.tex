@@ -82,7 +82,7 @@ There also exist third-party user mode libraries for developing file system driv
 \label{chap:ourapproach.final}
 After deciding against the frameworks mentioned in the previous section, only WDM was left, which we thus settled for. This section will describe our approach and our considerations during its design in detail. Where applicable, both read and write operations will be taken into consideration. See \autoref{chap:ourapproach.final.writeproblem} for why we ultimately decided to make all filtered partitions read-only.
 
-As explained in the following section, there are two components that work together to enable LUKS2 support on Windows. Together, the two components form the \emph{Oknolynx} project.\footnote{\label{fn:ourapproach.final.oknolynx} ``Okno'' means window in Czech, and the German word for lynx is ``Luchs''. The name therefore symbolizes the combination of LUKS(2) and Windows.} \autoref{app:onlinereferences} explains how to obtain a copy of Oknolynx' source code.
+As explained in the following section, there are two components that work together to enable LUKS2 support on Windows. Together, the two components form the \emph{Oknolynx} project.\footnote{\label{fn:ourapproach.final.oknolynx} ``Okno'' means window in Czech, and the German word for lynx is ``Luchs''. The name therefore symbolizes the combination of Windows and LUKS(2).} \autoref{app:onlinereferences} explains how to obtain a copy of Oknolynx' source code.
 
 \subsection{Architecture}
 \label{chap:ourapproach.final.architecture}
@@ -129,13 +129,6 @@ Another important part of the architecture is where the actual cryptographic wor
 \end{descitemize}
 
 In the end, we decided that for a scientific project it would be okay to implement our own cryptographic functionality. Details on this topic can be found in \autoref{chap:ourapproach.final.de_encrypting}.
-
-\todo{here and/or in other sections: screenshots from WinDbg showing e.g. a device stack and}\\\todo{luks2flt's device object}
-
-\todo{explain ``by the way''? or move to \autoref{chap:background.kerneldriver.concepts}}
-\begin{itemize}
-	\item look-aside lists (page 331)
-\end{itemize}
 
 \subsection{Installation}
 \label{chap:ourapproach.final.install}
@@ -390,34 +383,24 @@ To completely verify our assumption that only the metadata becomes corrupted and
 
 \section{Security and Privacy Considerations}
 \label{chap:ourapproach.security}
-\todo{reference \autoref{chap:otherapproaches.linux}?}
+Security and privacy of confidential data was not a focus in our work, but we still thought these topics. Following are our considerations on them.
 
-\todo{security:} to communicate with \texttt{luks2flt} (only possible via IOCTLs), a theoretical attacker would need to already have administrator rights. They are required to open a device handle, which is needed for sending IOCTLs. Therefore, any possibly existing security vulnerabilities are of low impact (if an adversary has admin rights, the system is already more or less completely compromised). Of course, we still were careful not to introduce any vulnerabilities.
+\paragraph{Security}
+As every kernel component has access to the complete physical RAM and the highest possible privileges, bugs in it can lead to the whole system crashing, or worse, being fully compromised. Especially the handling of untrusted input must be done with care.
 
-\todo{privacy:} explain what the other implementations do and that we (could) do the same, but don't do it (yet) because this was not our focus.
+In the case of \texttt{luks2flt}, there are two sources of user input: the data sent via \texttt{IOCTL\_DISK\_SET\_LUKS2\_INFO} and the data for Write IRPs.
 
-\todo{\url{https://crates.io/crates/secrecy} for luks2filterstart}
+To send IOCTLs, a user must open a device handle, for which they need administrator privileges. A theoretical attacker would thus need to already have those access rights. Therefore, any possibly existing security vulnerability in the handling of this IOCTL would be of low impact. If an adversary has admin rights, the system is already more or less completely compromised. Of course, we still were careful when implementing this functionality.
 
-\todo{\cite{Halderman2008} \cite{Guan2018} \cite{Li2021} \cite{Simon2018} for literature on memory disclosure attacks and controlling (memory) side effects}
+As we understand it, when a Write IRP arrives at our driver, the values of parameters like the buffer size have already been checked by Windows. The data to be written is only touched by the encryption routines. The implementations of the algorithms are not our own and, assuming we translated them correctly from Rust to C, should not contain vulnerabilities.
 
-\todo{\url{https://tails.boum.org/contribute/design/memory_erasure/}}
+Of course, these claims must be verified by an independent party, should certainty be required (i.e. if someone wanted to \texttt{luks2flt} in a production environment).
 
-\todo{\url{https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-rtlsecurezeromemory}}
+\paragraph{Privacy}
+As we have discussed in \autoref{chap:otherapproaches}, all described implementations take care to overwrite memory containing sensitive data before deallocating it. Most importantly, they all zero out any cryptographic keys when not needed any more.
 
-This is the generic solution written in C for clearing memory of the OpenSSL project (as of version 1.1.1l) \todo{[citation needed], explain \texttt{volatile}?}: \href{https://www.openssl.org/docs/man1.1.1/man3/OPENSSL_cleanse.html}{the doc for it}
-\begin{ccode}
-/*
- * Pointer to memset is volatile so that compiler must de-reference
- * the pointer and can't assume that it points to any function in
- * particular (such as memset, which it then might further "optimize")
- */
-typedef void *(*memset_t)(void *, int, size_t);
+\texttt{luks2flt} does this as well, on two occasions: after copying the data into the device extension, the buffer used for \texttt{IOCTL\_DISK\_SET\_LUKS2\_INFO} is overwritten with zeros;\footnote{\label{fn:ourapproach.security.zeroioctlbuffer} This IOCTL always uses buffered I/O, therefore we receive a copy of the user buffer from the I/O manager, which will free it after our usage.} and when deleting a device object in response to a PnP remove request, the device extension is also zeroed. Both times, the \texttt{RtlSecureZeroMemory} routine is used to clear the buffer. This is the same as VeraCrypt, and as explained in \autoref{chap:otherapproaches.veracrypt.peeking}, a call to it is guaranteed not to be optimized out by the compiler.
 
-static volatile memset_t memset_func = memset;
+\texttt{luks2filterstart.exe} also handles sensitive data and is responsible for overwriting it with zeros. However, we did not implement this, because Rust makes it non-trivial and this was not our focus.\footnote{\label{fn:ourapproach.security.secrecycrate} There are partial solutions to this problem, e.g. the \href{https://crates.io/crates/secrecy}{\texttt{secrecy} crate}, but there are still some problems left to solve (for example, this crate cannot be easily used with the cryptography crates that \texttt{luks2filterstart.exe} uses).}
 
-void OPENSSL_cleanse(void *ptr, size_t len)
-{
-    memset_func(ptr, 0, len);
-}
-\end{ccode}
-The most popular CPU architectures, including x86, x64, ARM, and SPARC, have a hand-written assembly version of \texttt{OPENSSL\_cleanse}. This avoids the compiler from optimizing the zeroing away.
+It should be noted that despite these efforts, cryptographic key material may still be recovered by attackers from a running system with unlocked volumes. \cite{Halderman2008} details successful coldboot attacks against BitLocker and TrueCrypt (VeraCrypt's predecessor). \cite{Guan2018} describes a possible defence strategy, however requiring hardware support.
