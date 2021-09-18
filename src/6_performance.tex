@@ -2,13 +2,15 @@
 \label{chap:performance}
 \todo{todo}
 
-To compare the performance of our driver to BitLocker and VeraCrypt, we conducted several experiments measuring the throughput for sequential and random-access reading. The tests were done both in a virtual machine and on real hardware.
+To compare the performance of our driver to BitLocker and VeraCrypt, we conducted several experiments measuring the read rate for both sequential and random access. Preliminary tests were done in a virtual machine, and after some optimizations, we tested more extensively on real hardware.
 
-\section{Experimental Setup and Design}
+\section{Experimental Setup}
 \label{chap:performance.setup}
 Both the setup for the virtual machine and the real hardware will be described in this section. They are mostly the same, so when not stated otherwise, the contents in this section apply to both.
 
-For each encryption technique featured in our benchmarks we created a separate 5 GiB FAT32 volume on the same \todo{disk/SSD}, as shown in \autoref{fig:performance.setup.disklayout}. Every volume contained the same file, \texttt{random.bin} (4 GiB of random data). \todo{if HDD: 1 GiB}
+Both configurations used a fresh Windows 10 build 19043.928 install. The virtual machine ran in Oracle VirtualBox 6.1.22 with 8 GiB of virtual RAM (backed by 16 GiB DDR4 RAM), 4 virtual cores (backed by a Intel Core i7-7700K), and two virtual disks (backed by a 250 GB Samsung SSD 850 EVO). The real machine had 8 GiB DDR3 RAM, an Intel Core i7-3770 quad core with simultaneous multithreading, and a 233GiB SanDisk SDSSDH3250G. \todo{HDD?}
+
+For each encryption technique featured in our benchmarks we created a separate 5 GiB FAT32 volume on the same \todo{disk/SSD}, as shown in \autoref{fig:performance.setup.disklayout}. Every volume contained the same file, \texttt{random.bin} (4 GiB of random data). \todo{if HDD: 1 GiB} We configured BitLocker to use the new AES-XTS mode, all other settings were left unchanged. For VeraCrypt, we also used AES-XTS with SHA-256 and also mounted the volume as read-only after copying the \texttt{random.bin} file to it.
 
 \begin{figure}[htb!]
 	\begin{tikzpicture}
@@ -36,60 +38,81 @@ For each encryption technique featured in our benchmarks we created a separate 5
 	\label{fig:performance.setup.disklayout}
 \end{figure}
 
-To test the performance of the different drivers, we used the \texttt{fio} command line tool\footnote{\label{fn:performance.setup.fio} \url{https://fio.readthedocs.io}} to read from the three copies of \texttt{random.bin}, using different access patterns. Each run of \texttt{fio} is called a \emph{job}, and the configuration for a job is stored in a \emph{job file}.
+To compare the performance of the different drivers, we used version 3.27 of the \texttt{fio} command line tool \cite{Fio} to read from the three copies of \texttt{random.bin}, using different access patterns. Each run of \texttt{fio} is called a \emph{job}, and the configuration for a job is stored in a \emph{job file}. We maintained a different job file for each of the three encryption technologies. \autoref{fig:performance.setup.fiojobfile} describes the different parameters that we used and shows the configuration for \texttt{luks2flt}. \texttt{fio} allows the user to specify which I/O engine to use. The default on Windows is the native asynchronous I/O API, which is what we used.
 
-\todo{fio options, job files, and powershell script}
+We wrote a PowerShell script to automate running jobs with different parameters. Its task was to set the environment variables used in the job files to their respective values and to invoke \texttt{fio}, pointing it to the correct job file. A sample invocation looks like this: \texttt{fio ---readonly ---output-format=json ---output luks2flt.json luks2flt.fio}. The \texttt{---readonly} option is necessary because even though we only specified read operations, execution would fail for read-only volumes. The data visualized by the graphs in the following sections was taken from \texttt{fio}'s JSON output.
 
-\todo{(except for VM) every run three times and average it, if multiple threads the value used for one run was the average of all threads}
-
-\todo{VM: fresh Windows 10 build 19043.928 install, virtualized using Oracle VirtualBox 6.1.22, 8 GiB of virtual RAM (backed by 16 GiB DDR4 RAM), 4 virtual cores (backed by a Intel Core i7-7700K), virtual SSD stored on a 250 GB Samsung SSD 850 EVO}
-
-\todo{Real hardware: fresh Windows 10 build 19043.928 install, 8 GiB DDR3 RAM, Intel Core i7-3770 quad core with SMT, 233GiB SanDisk SDSSDH3250G}
+\begin{figure}[htb!]
+	\begin{inicode}
+[luks2flt]
+filename=L\:\random.bin
+thread
+iodepth=${IODEPTH}
+numjobs=${NUMJOBS}
+rw=${MODE}
+bs=${BLOCKSIZE}
+	\end{inicode}
+	\caption[
+		\texttt{fio} job file for \texttt{luks2flt}
+	]{
+		\texttt{fio} job file for \texttt{luks2flt}. It defines one job called \texttt{luks2flt}. The \texttt{filename} option's value is the only one that depends on the used driver; the rest of the configuration is the same for BitLocker and VeraCrypt. The \texttt{thread} option means that \texttt{fio} will create threads instead of processes to run jobs (which is always done on Windows, but when not specifying this option, the user is warned about this behaviour). The \texttt{iodepth} parameter controls how many I/O operations \texttt{fio} will try to submit before waiting for the completion of submitted requests (i.e. the size of the internal queue of submitted I/O requests). \texttt{numjobs} controls how many threads will concurrently execute the job (note that each thread does a full run of the job, i.e. each thread reads the complete file and has its own queue with the size specified by \texttt{numjobs}). \texttt{rw} holds the access mode, in our case it is always \texttt{read} (sequential reading) or \texttt{randread} (random-access reading). The blocksize of read operations, i.e. how the number of bytes read in a single I/O operation, is given by the \texttt{bs} option. All parameter values of the form \texttt{\$\{PARAM\}} are configured by environment variables \cite{Fio}.
+	}
+	\label{fig:performance.setup.fiojobfile}
+\end{figure}
 
 \todo{keep \cite{Traeger2008} in mind}
 
-\cite{Traeger2008}: ``[Random-access I/O] is typical of on-line transaction processing (OLTP) systems, database systems, or mail server applications.'' Examples for sequential access are ``large file processing (scientific computing, large-scale financial processing), large database queries (data mining, business intelligence), and on-demand video.''
-
 \section{Virtual Machine Experiments}
 \label{chap:performance.vmexperiments}
-\todo{todo:} For testing purposes, we tried optimizing the performance by restricting support to AES256-XTS. This enabled removing some if-else constructs that dispatched de-/encryption functions based on whether AES128 or AES256 was used. Even though these conditionals were located in a performance critical section, we saw no speed improvements. Our theory for why this was the case is the following: our driver was only ever used for one LUKS2 partition and therefore always took the same path through the if-else (either always AES128 or always AES256). This trained the CPU's branch prediction on this one specific path. Thus, after a short training phase, the CPU always speculatively executed the correct path, resulting in the same performance as without the if-else.
+To get a first impression of \texttt{luks2flt}'s performance, we ran a first series of experiments in a virtual machine.\footnote{\label{fn:performance.vmexperiments.vm} Note that this virtual machine had not been started in debug mode and was not connected to a WinDbg kernel debugging session, so as to not impact performance.}
 
-\todo{todo:} The default compiler optimization settings in Visual Studio were a little bit conservative and also optimized for small code size rather than high speed/performance. After tuning these settings to enable more aggressive optimizations and also focus on speed rather than code size, we found that \todo{this is a little bit complicated...}.
+When we looked at the results, we were convinced that there was still some optimization possible. We first checked the compiler's optimization settings, and found that the default compiler optimization settings in Visual Studio were a bit conservative. They were also set to optimize for small code size rather than high speed/performance. We therefore tuned these settings to enable more aggressive optimizations and also focus on speed rather than code size. This led to a more optimized version of \texttt{luks2flt}.
+
+\autoref{fig:performance.vmexperiments.seq} shows a comparison of the read rates for sequential access, for block sizes ranging from 4 to 8192 KiB. The featured drivers are BitLocker, VeraCrypt and the two versions of \texttt{luks2flt} (before and after enabling more optimizations). \todo{describe kurvenverlauf}
 
 \begin{figure}[htb!]
 	\center
 	\includegraphics[scale=1]{../fig/performance.vmexperiments.seq.pdf}
 	\caption[
-		Comparison of sequential read throughput in a virtual machine
+		Sequential read rates in the virtual machine
 	]{
-		Comparison of sequential read throughput in a virtual machine. \todo{todo}
+		Sequential read rates in the virtual machine. The data values was obtained by running jobs back to back: one job per combination of driver and block size, grouped by driver and ordered by increasing block size. There was a reboot after the BitLocker, VeraCrypt, and optimized \texttt{luks2flt} jobs to load the less optimized version of \texttt{luks2flt}. Both the \texttt{iodepth} and \texttt{numjobs} parameters were set to a value of 1.
 	}
-	\label{fig:performance.vmexperiments.rand}
+	\label{fig:performance.vmexperiments.seq}
 \end{figure}
+
+\autoref{fig:performance.vmexperiments.rand} shows \todo{describe figure and kurvenverlauf}
 
 \begin{figure}[htb!]
 	\center
 	\includegraphics[scale=1]{../fig/performance.vmexperiments.rand.pdf}
 	\caption[
-		Comparison of random-access read throughput in a virtual machine
+		Random-access read rates in the virtual machine
 	]{
-		Comparison of random-access read throughput in a virtual machine. \todo{todo}
+		Random-access read rates in the virtual machine. See \autoref{fig:performance.vmexperiments.rand} for how the data was obtained.
 	}
 	\label{fig:performance.vmexperiments.rand}
 \end{figure}
 
+\todo{interpretations of what we saw experimentally}
+
+We also tried optimizing the performance by restricting \texttt{luks2flt}'s cryptographic capabilities to AES-256-XTS and dropping support for AES-128-XTS. This enabled removing some \texttt{if}-\texttt{else} constructs that dispatched de-/encryption functions based on whether AES-128 or AES-256 was used. Even though these conditionals were located in a performance critical section, we found no significant read rate changes. Our theory for why this was the case is the following: in this setup, our driver was only ever used for one LUKS2 partition and therefore always took the same path through the \texttt{if}-\texttt{else} (either always AES-128 or always AES-256). This trained the CPU's branch prediction on this one specific path. Thus, after a short training phase, the CPU always speculatively executed the correct path, resulting in the same performance as without the \texttt{if}-\texttt{else}. The same reasoning applies for a use case where \texttt{luks2flt} is filtering multiple volumes that all use the same AES-XTS variant, \todo{although we did not test this}.
+
 \section{Real Hardware Experiments}
 \label{chap:performance.hwexperiments}
+\todo{every run three times and average it, if multiple threads the value used for one run was the average of all threads}
 
-\subsection{Unencrypted Throughput Measurements}
+\subsection{Unencrypted Read Rate Measurements}
 \label{chap:performance.hwexperiments.unencrypted}
+\todo{credit \cite{Traeger2008}?}
+
 \begin{figure}[htb!]
 	\center
 	\includegraphics[scale=1]{../fig/performance.hwexperiments.nullcryptoseq.pdf}
 	\caption[
-		Unencrypted versus null-crypto sequential read throughput
+		Unencrypted versus null-crypto sequential read rate
 	]{
-		Unencrypted versus null-crypto sequential read throughput. \todo{todo}
+		Unencrypted versus null-crypto sequential read rate. \todo{todo}
 	}
 	\label{fig:performance.hwexperiments.nullcryptoseq}
 \end{figure}
@@ -98,22 +121,24 @@ To test the performance of the different drivers, we used the \texttt{fio} comma
 	\center
 	\includegraphics[scale=1]{../fig/performance.hwexperiments.nullcryptorand.pdf}
 	\caption[
-		Unencrypted versus null-crypto random-access read throughput
+		Unencrypted versus null-crypto random-access read rate
 	]{
-		Unencrypted versus null-crypto random-access read throughput. \todo{todo}
+		Unencrypted versus null-crypto random-access read rate. \todo{todo}
 	}
 	\label{fig:performance.hwexperiments.nullcryptorand}
 \end{figure}
 
-\subsection{First Series of Encrypted Throughput Measurements}
+\subsection{First Series of Encrypted Read Rate Measurements}
 \label{chap:performance.hwexperiments.encryptedseries1}
+\todo{These were done with the version of \texttt{luks2flt} before enabling more optimizations, as described in \autoref{chap:performance.vmexperiments}.}
+
 \begin{figure}[htb!]
 	\center
 	\includegraphics[scale=1]{../fig/performance.hwexperiments.beforeoptseq.pdf}
 	\caption[
-		Comparison of sequential read throughput
+		Sequential read rates (less optimized \texttt{luks2flt})
 	]{
-		Comparison of sequential read throughput. \todo{todo}
+		Sequential read rates (less optimized \texttt{luks2flt}). \todo{todo}
 	}
 	\label{fig:performance.hwexperiments.beforeoptseq}
 \end{figure}
@@ -122,24 +147,24 @@ To test the performance of the different drivers, we used the \texttt{fio} comma
 	\center
 	\includegraphics[scale=1]{../fig/performance.hwexperiments.beforeoptrand.pdf}
 	\caption[
-		Comparison of random-access read throughput
+		Random-access read rates (less optimized \texttt{luks2flt})
 	]{
-		Comparison of random-access read throughput. \todo{todo}
+		Random-access read rates (less optimized \texttt{luks2flt}). \todo{todo}
 	}
 	\label{fig:performance.hwexperiments.beforeoptrand}
 \end{figure}
 
-\subsection{Second Series of Encrypted Throughput Measurements}
+\subsection{Second Series of Read Rate Measurements}
 \label{chap:performance.hwexperiments.encryptedseries2}
-\todo{all the different optimizedv2 graphs}
+The further optimizations of \texttt{luks2flt}, as described in \autoref{chap:performance.vmexperiments}, unfortunately led to reproducible crashes on real hardware. \todo{(explain that the fastfat driver crashed?)} We consequently disabled some of the optimizations again (Whole program optimization, Spectre mitigations, Link-time code generation, and Frame-pointer omission), and did not find any more crashes. Regrettably, this also led to a performance regression. \todo{check if we can re-enable some options again and increase performance?}
 
 \begin{figure}[htb!]
 	\center
 	\includegraphics[scale=1]{../fig/performance.hwexperiments.optseq.pdf}
 	\caption[
-		Comparison of sequential read throughput (optimized \texttt{luks2flt})
+		Sequential read rates
 	]{
-		Comparison of sequential read throughput (optimized \texttt{luks2flt}). \todo{todo}
+		Sequential read rates. \todo{todo}
 	}
 	\label{fig:performance.hwexperiments.optseq}
 \end{figure}
@@ -148,9 +173,9 @@ To test the performance of the different drivers, we used the \texttt{fio} comma
 	\center
 	\includegraphics[scale=1]{../fig/performance.hwexperiments.optrand.pdf}
 	\caption[
-		Comparison of random-access read throughput (optimized \texttt{luks2flt})
+		Random-access read rates
 	]{
-		Comparison of random-access read throughput (optimized \texttt{luks2flt}). \todo{todo}
+		Random-access read rates. \todo{todo}
 	}
 	\label{fig:performance.hwexperiments.optrand}
 \end{figure}
@@ -159,9 +184,9 @@ To test the performance of the different drivers, we used the \texttt{fio} comma
 	\center
 	\includegraphics[scale=1]{../fig/performance.hwexperiments.optseqqueue.pdf}
 	\caption[
-		Comparison of queued sequential read throughput (optimized \texttt{luks2flt})
+		Sequential read rates with \texttt{iodepth=16}
 	]{
-		Comparison of queued sequential read throughput (optimized \texttt{luks2flt}). \todo{todo}
+		Sequential read rates with \texttt{iodepth=16}. \todo{todo}
 	}
 	\label{fig:performance.hwexperiments.optseqqueue}
 \end{figure}
@@ -170,9 +195,9 @@ To test the performance of the different drivers, we used the \texttt{fio} comma
 	\center
 	\includegraphics[scale=1]{../fig/performance.hwexperiments.optrandqueue.pdf}
 	\caption[
-		Comparison of queued random-access read throughput (optimized \texttt{luks2flt})
+		Random-access read rates with \texttt{iodepth=16}
 	]{
-		Comparison of queued random-access read throughput (optimized \texttt{luks2flt}). \todo{todo}
+		Random-access read rates with \texttt{iodepth=16}. \todo{todo}
 	}
 	\label{fig:performance.hwexperiments.optrandqueue}
 \end{figure}
@@ -181,9 +206,9 @@ To test the performance of the different drivers, we used the \texttt{fio} comma
 	\center
 	\includegraphics[scale=1]{../fig/performance.hwexperiments.optseqthreads.pdf}
 	\caption[
-		Comparison of multi-threaded sequential read throughput (optimized \texttt{luks2flt})
+		Sequential read rates with \texttt{numjobs=16}
 	]{
-		Comparison of multi-threaded sequential read throughput (optimized \texttt{luks2flt}). \todo{todo}
+		Sequential read rates with \texttt{numjobs=16}. \todo{todo}
 	}
 	\label{fig:performance.hwexperiments.optseqthreads}
 \end{figure}
@@ -192,9 +217,9 @@ To test the performance of the different drivers, we used the \texttt{fio} comma
 	\center
 	\includegraphics[scale=1]{../fig/performance.hwexperiments.optrandthreads.pdf}
 	\caption[
-		Comparison of multi-threaded random-access read throughput (optimized \texttt{luks2flt})
+		Random-access read rates with \texttt{numjobs=16}
 	]{
-		Comparison of multi-threaded random-access read throughput (optimized \texttt{luks2flt}). \todo{todo}
+		Random-access read rates with \texttt{numjobs=16}. \todo{todo}
 	}
 	\label{fig:performance.hwexperiments.optrandthreads}
 \end{figure}
@@ -203,9 +228,9 @@ To test the performance of the different drivers, we used the \texttt{fio} comma
 	\center
 	\includegraphics[scale=1]{../fig/performance.hwexperiments.optseqthreadsqueue.pdf}
 	\caption[
-		Comparison of multi-threaded and queued sequential read throughput (optimized \texttt{luks2flt})
+		Sequential read rates with \texttt{numjobs=16} and \texttt{iodepth=16}
 	]{
-		Comparison of multi-threaded and queued sequential read throughput (optimized \texttt{luks2flt}). \todo{todo}
+		Sequential read rates with \texttt{numjobs=16} and \texttt{iodepth=16}. \todo{todo}
 	}
 	\label{fig:performance.hwexperiments.optseqthreadsqueue}
 \end{figure}
@@ -214,13 +239,13 @@ To test the performance of the different drivers, we used the \texttt{fio} comma
 	\center
 	\includegraphics[scale=1]{../fig/performance.hwexperiments.optrandthreadsqueue.pdf}
 	\caption[
-		Comparison of multi-threaded and queued random-access read throughput (optimized \texttt{luks2flt})
+		Random-access read rates with \texttt{numjobs=16} and \texttt{iodepth=16}
 	]{
-		Comparison of multi-threaded and queued random-access read throughput (optimized \texttt{luks2flt}). \todo{todo}
+		Random-access read rates with \texttt{numjobs=16} and \texttt{iodepth=16}. \todo{todo}
 	}
 	\label{fig:performance.hwexperiments.optrandthreadsqueue}
 \end{figure}
 
-\subsection{Measuring Throughput Over Time}
-\label{chap:performance.hwexperiments.throughputovertime}
+\subsection{Measuring Read Rates Over Time}
+\label{chap:performance.hwexperiments.readrateovertime}
 \todo{bw\_log graphs}
