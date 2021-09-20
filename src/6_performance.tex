@@ -4,11 +4,11 @@ To compare the performance of our driver to BitLocker and VeraCrypt, we conducte
 
 \section{Experimental Setup}
 \label{chap:performance.setup}
-Both the setup for the virtual machine and the real hardware will be described in this section. They are mostly the same, so when not stated otherwise, the contents in this section apply to both.
+Both the setup for the virtual machine and the real hardware will be described in this section. They are mostly the same, so unless stated otherwise, the contents in this section apply to both.
 
-Both configurations used a fresh Windows 10 build 19043.928 install. The virtual machine ran in Oracle VirtualBox 6.1.22 with 8 GiB of virtual RAM (backed by 16 GiB DDR4 RAM), 4 virtual cores (backed by a Intel Core i7-7700K), and two virtual disks (backed by a 250 GB Samsung SSD 850 EVO). The real machine had 8 GiB DDR3 RAM, an Intel Core i7-3770 quad core with simultaneous multithreading, a 233GiB SanDisk SDSSDH3250G, and a 466GiB ST500DM002-1BD142.
+Both configurations used a fresh Windows 10 build 19043.928 install. The virtual machine ran in Oracle VirtualBox 6.1.22 with 8 GiB of virtual RAM (backed by 16 GiB DDR4 RAM), 4 virtual cores (backed by a Intel Core i7-7700K), and two virtual disks (backed by a 250 GB Samsung SSD 850 EVO). The real machine had 8 GiB DDR3 RAM, an Intel Core i7-3770 quad core with simultaneous multithreading, and a 233 GiB SanDisk SDSSDH3250G.
 
-For each encryption technique featured in our benchmarks we created a separate 5 GiB FAT32 volume on the same disk, as shown in \autoref{fig:performance.setup.disklayout}. Every volume contained the same file, \texttt{random.bin} (4 GiB of random data in the virtual machine and on the SSD, 1 GiB on the HDD). We configured BitLocker to use the new AES-XTS mode, all other settings were left unchanged. For VeraCrypt, we also used AES-XTS with SHA-256 and also mounted the volume as read-only after copying the \texttt{random.bin} file to it.
+For each encryption technique featured in our benchmarks we created a separate 5 GiB FAT32 volume on the same disk, as shown in \autoref{fig:performance.setup.disklayout}. Every encrypted volume contained the same file, \texttt{random.bin} (4 GiB of random data). We configured BitLocker to use the new AES-XTS mode, all other settings were left unchanged. For VeraCrypt, we also used AES-XTS with SHA-256 and also mounted the volume as read-only after copying the \texttt{random.bin} file to it.
 
 \begin{figure}[htb!]
 	\begin{tikzpicture}
@@ -29,16 +29,14 @@ For each encryption technique featured in our benchmarks we created a separate 5
 		(12.05, 0) -- (15.95, 0) node [black, midway, yshift=-18pt] {\small 5 GiB};
 	\end{tikzpicture}
 	\caption[
-		SSD partition layout
+		Volume layout for our experiments
 	]{
-		SSD partition layout. This is the layout of the real hardware SSD. The layout of the HDD was similar, but with additional Windows partitions behind the the encrypted volumes. The virtual machine had a virtual disk for the Windows installation and another one for the three encrypted volumes.
+		Volume layout for our experiments. This is the layout of the real hardware SSD. The virtual machine had a virtual disk for the Windows installation and another one for the three encrypted volumes.
 	}
 	\label{fig:performance.setup.disklayout}
 \end{figure}
 
 To compare the performance of the different drivers, we used version 3.27 of the \texttt{fio} command line tool \cite{Fio} to read from the three copies of \texttt{random.bin}, using different access patterns. Each run of \texttt{fio} is called a \emph{job}, and the configuration for a job is stored in a \emph{job file}. We maintained a different job file for each of the three encryption technologies. \autoref{fig:performance.setup.fiojobfile} describes the different parameters that we used and shows the configuration for \texttt{luks2flt}. \texttt{fio} allows the user to specify which I/O engine to use. The default on Windows is the native asynchronous I/O API, which is what we used.
-
-We wrote a PowerShell script to automate running jobs with different parameters. Its task was to set the environment variables used in the job files to their respective values and to invoke \texttt{fio}, pointing it to the correct job file. A sample invocation looks like this: \texttt{fio ---readonly ---output-format=json ---output luks2flt.json luks2flt.fio}. The \texttt{---readonly} option is necessary because even though we only specified read operations, execution would fail for read-only volumes. The data visualized by the graphs in the following sections was taken from \texttt{fio}'s JSON output.
 
 \begin{figure}[htb!]
 	\begin{inicode}
@@ -58,7 +56,9 @@ bs=${BLOCKSIZE}
 	\label{fig:performance.setup.fiojobfile}
 \end{figure}
 
-\todo{keep \cite{Traeger2008} in mind}
+We also looked at other I/O benchmarking programs, but found that they all required write access. This unfortunately made them unfit for our cause.
+
+We wrote a PowerShell script to automate running jobs with different parameters. Its task was to set the environment variables used in the job files to their respective values and to invoke \texttt{fio}, pointing it to the correct job file. A sample invocation looks like this: \texttt{fio ---readonly ---output-format=json ---output luks2flt.json luks2flt.fio}. The \texttt{---readonly} option is necessary because even though we only specified read operations, execution would fail for read-only volumes. The data visualized by the graphs in the following sections was taken from \texttt{fio}'s JSON output.
 
 \section{Virtual Machine Experiments}
 \label{chap:performance.vmexperiments}
@@ -67,7 +67,7 @@ To get a first impression of \texttt{luks2flt}'s performance, we ran a first ser
 When we looked at the results of our measurements, we were convinced that there was still some optimization possible. We first checked the compiler's optimization settings, and found that the default compiler optimization settings in Visual Studio were a bit conservative. They were also set to optimize for small code size rather than high speed/performance. We therefore tuned these settings to enable more aggressive optimizations and also focus on speed rather than code size. This led to a more optimized version of \texttt{luks2flt}. The results presented in this section feature both the first and the more optimized version.
 
 \paragraph{Results and Observations}
-\autoref{fig:performance.vmexperiments.seq} shows a comparison of the read rates for sequential access, with block sizes ranging from 4 to 8192 KiB. The featured drivers are BitLocker, VeraCrypt and the two versions of \texttt{luks2flt} (before and after enabling more optimizations). BitLocker consistently has the highest read rate, starting at 171 MiB/s for 4 KiB blocks, rising with bigger blocks, until peaking at 469 MiB/s for a block size of 4096 KiB. VeraCrypt generally has the second-highest rate, starting at 154 MiB/s, with an upwards trend until the maximum of 341 MiB/s is reached for 512 KiB blocks. It then falls back down to 329 MiB/s. The optimized \texttt{luks2flt} version comes third, starting at 144 MiB/s and rising to 344 MiB/s, beating VeraCrypt at the largest block size. \texttt{luks2flt}'s less optimized variant always has the lowest read rate, beginning at 119 MiB/s and climbing to 217 MiB/s.
+\autoref{fig:performance.vmexperiments.seq} shows a comparison of the read rates for sequential access, with block sizes ranging from 4 to 8192 KiB. The featured drivers are BitLocker, VeraCrypt and the two versions of \texttt{luks2flt} (before and after enabling more optimizations). BitLocker consistently has the highest read rate, starting at 171 MiB/s for 4 KiB blocks, rising with bigger blocks, until peaking at 469 MiB/s for a block size of 4096 KiB. VeraCrypt generally has the second-highest rate, starting at 154 MiB/s, with an upwards trend until the maximum of 341 MiB/s is reached for 256 KiB blocks. It then slowly falls back down to 329 MiB/s. The optimized \texttt{luks2flt} version comes third, starting at 144 MiB/s and rising to 344 MiB/s, beating VeraCrypt at the largest block size. \texttt{luks2flt}'s less optimized variant always has the lowest read rate, beginning at 119 MiB/s and climbing to 217 MiB/s.
 
 \begin{figure}[htb!]
 	\center
@@ -83,7 +83,7 @@ When we looked at the results of our measurements, we were convinced that there 
 We observe the following from these results:
 \begin{itemize}
 	\item BitLocker's sequential read rate is unreachable for both our driver and VeraCrypt at larger block sizes. \todo{concrete values?}
-	\item VeraCrypt performs noticeably better at sequential reading than \texttt{luks2flt}, but the difference decreases with increasing block size. \todo{concrete values?}
+	\item VeraCrypt performs noticeably better at sequential reading than \texttt{luks2flt}'s optimized version, but the difference decreases with increasing block size. VeraCrypt's read rate peaks at 256 KiB, but our driver's rate continues to grow after that.
 	\item The more optimized version has a significantly higher sequential read rate than the first version, especially at larger block sizes. At 4 KiB, the increase in performance is about 21\%; at 8192 KiB the more optimized version has about a 59\% higher read rate.
 \end{itemize}
 
@@ -102,18 +102,18 @@ We observe the following from these results:
 
 We observe the following from these results:
 \begin{itemize}
-	\item BitLocker is the best performing driver, with sometimes almost double the read rate of the others (e.g. at 128 KiB).
-	\item The optimized version of \texttt{luks2flt} beats VeraCrypt at two thirds of the tested block sizes. \todo{60\% better at 4 KiB, 52\% at 16 KiB, 14\% slower at 2048 KiB}
-	\item For 128 KiB and larger block sizes, the more optimized version has a significantly higher random-access read rate than the first version. For the biggest block size, the more optimized version has a 113\% higher read rate.
+	\item BitLocker has the highest random-access read rate, with sometimes almost double the rate of the others (e.g. at 128 KiB).
+	\item The optimized version of \texttt{luks2flt} beats VeraCrypt's random-access read rate at two thirds of the tested block sizes. For example, its read rate is 60\% higher at 4 KiB, 52\% higher at 16 KiB, and 14\% lower at 2048 KiB.
+	\item Starting from a block size of 128 KiB, the more optimized version has a significantly higher random-access read rate than the first version. For the biggest block size, the more optimized version has a 113\% higher read rate.
 \end{itemize}
 
 \paragraph{Interpretation}
 Combining our observations from both access patterns, we \todo{draw these conclusions}: \todo{check later if some of these things should maybe be in the discussion instead of here}
 \begin{itemize}
-	\item \todo{BitLocker is the best-performing driver, both at sequential and random-access reading.} This is not really surprising, as it is not a fair competition: one driver is the proprietary product of Microsoft, who also wrote the operating system running the driver; and the other two are open source projects by third parties. Microsoft's driver profits from their expertise in Windows' inner workings, and can also take advantage of undocumented internals.
-	\item \todo{VeraCrypt performs noticeably better at sequential reading than \texttt{luks2flt}, but the difference decreases with increasing block size.} The former is probably because of VeraCrypt's read ahead caching \todo{caching less effective for larger blocks because of VeraCrypt's fragmenting?}
-	\item \todo{VeraCrypt vs \texttt{luks2flt} at random-access}
-	\item \todo{Compiler optimizations}
+	\item BitLocker is the best-performing driver, both at sequential and random-access reading. This is not really surprising, as it is not a fair competition: one driver is the proprietary product of Microsoft, who also wrote the operating system running the driver; and the other two are open source projects by third parties. Microsoft's driver profits from their expertise in Windows' inner workings, and can also take advantage of undocumented internals.
+	\item VeraCrypt has a higher sequential read rate than \texttt{luks2flt}, with the difference decreasing for larger block sizes. The former is probably because of VeraCrypt's read ahead caching, as \texttt{luks2flt} does not perform any caching. The latter may be because of VeraCrypt's fragmenting of larger blocks into at most 256 KiB blocks. This means that the I/O performed by the driver can only profit so much from block sizes larger than 256 KiB. This theory is supported by the fact that VeraCrypt reaches its peak sequential read rate at exactly this block size. As already mentioned in \autoref{chap:otherapproaches.veracrypt.peeking}, the fragmenting is done to overlap I/O and cryptographic operations. However, the alleged gains from this overlapping do not seem to be able to cancel out the losses by capping the effective block size at 256 KiB.
+	\item For random-access reads, the performance difference between VeraCrypt and \texttt{luks2flt} is smaller, with our driver showing higher read rates most of the time. This supports the thesis that VeraCrypt's performance advantage for sequential access stems from its caching: for random access reads the cache is not effective, and therefore the advantage vanishes.
+	\item The changed compiler optimization settings have a significant impact on our driver's read performance, regardless of the access pattern.
 \end{itemize}
 
 \paragraph{Another Optimization Attempt}
@@ -123,59 +123,7 @@ We also tried optimizing the performance by restricting \texttt{luks2flt}'s cryp
 \label{chap:performance.hwexperiments}
 After gaining first insights through the virtual machine experiments, we turned to real hardware for a deeper understanding. To combat the issue of variations in read rates due to external circumstances, we did not rely on measurements from single runs. Instead, we ran each job three times and calculated the average read rate. The same job was not run three times back to back; instead, we ran a first series of all jobs, then a second series, and finally a third. Thus, there was always quite some time between running the same job again, which hopefully eliminated most of the external influences.
 
-\subsection{Unencrypted Read Rate Measurements}
-\label{chap:performance.hwexperiments.unencrypted}
-The results presented in this section serve two purposes: firstly, the unencrypted read rates give context for the performance of all examined drivers; and secondly, we will test how much overhead there is without performing any cryptographic operations\footnote{\label{fn:performance.hwexperiments.nullcryptoinspiration} \cite{Traeger2008} as inspiration, called a null cipher \todo{todo}} (i.e. we measure the performance impact of \texttt{luks2flt}'s internal dispatching, registering completion routines, etc.).
-
-\begin{figure}[htb!]
-	\center
-	\includegraphics[scale=1]{../fig/performance.hwexperiments.nullcipherseq.pdf}
-	\caption[
-		Unencrypted versus null cipher sequential read rate
-	]{
-		Unencrypted versus null cipher sequential read rate. \todo{todo}
-	}
-	\label{fig:performance.hwexperiments.nullcipherseq}
-\end{figure}
-
-\begin{figure}[htb!]
-	\center
-	\includegraphics[scale=1]{../fig/performance.hwexperiments.nullcipherrand.pdf}
-	\caption[
-		Unencrypted versus null cipher random-access read rate
-	]{
-		Unencrypted versus nullcipher random-access read rate. \todo{todo}
-	}
-	\label{fig:performance.hwexperiments.nullcipherrand}
-\end{figure}
-
-\subsection{First Series of Encrypted Read Rate Measurements}
-\label{chap:performance.hwexperiments.encryptedseries1}
-\todo{These were done with the version of \texttt{luks2flt} before enabling more optimizations, as described in \autoref{chap:performance.vmexperiments}.}
-
-\begin{figure}[htb!]
-	\center
-	\includegraphics[scale=1]{../fig/performance.hwexperiments.beforeoptseq.pdf}
-	\caption[
-		Sequential read rates (less optimized \texttt{luks2flt})
-	]{
-		Sequential read rates (less optimized \texttt{luks2flt}). \todo{todo}
-	}
-	\label{fig:performance.hwexperiments.beforeoptseq}
-\end{figure}
-
-\begin{figure}[htb!]
-	\center
-	\includegraphics[scale=1]{../fig/performance.hwexperiments.beforeoptrand.pdf}
-	\caption[
-		Random-access read rates (less optimized \texttt{luks2flt})
-	]{
-		Random-access read rates (less optimized \texttt{luks2flt}). \todo{todo}
-	}
-	\label{fig:performance.hwexperiments.beforeoptrand}
-\end{figure}
-
-\subsection{Second Series of Read Rate Measurements}
+\subsection{Read Rate Measurements}
 \label{chap:performance.hwexperiments.encryptedseries2}
 The further optimizations of \texttt{luks2flt}, as described in \autoref{chap:performance.vmexperiments}, unfortunately led to reproducible crashes on real hardware. \todo{(explain that the fastfat driver crashed?)} We consequently disabled some of the optimizations again (Whole program optimization, Spectre mitigations, Link-time code generation, and Frame-pointer omission), and did not find any more crashes. Regrettably, this also led to a performance regression. \todo{check if we can re-enable some options again and increase performance?}
 
@@ -183,7 +131,7 @@ In some of the experiments in this section, multiple threads concurrently execut
 
 \todo{no less optimized version of luks2flt any more}
 
-\todo{from here on no hdd graphs? On HDD, the optimized version of \texttt{luks2flt} generally showed the same trend as on SSD, or even had less read rate differences to the other two drivers.}
+\todo{On HDD, the optimized version of \texttt{luks2flt} generally showed the same trend as on SSD, or even had less read rate differences to the other two drivers.}
 
 \todo{side note: the iodepth=1 and numjobs=1 read rates of BitLocker and VeraCrypt match the ones from the figures with the less optimized luks2flt pretty well. this means that influence of external circumstances is rather low}
 
@@ -208,6 +156,10 @@ In some of the experiments in this section, multiple threads concurrently execut
 	}
 	\label{fig:performance.hwexperiments.optrand}
 \end{figure}
+
+\todo{mögliche erklärung für veracrypt's schlechtere performance bei größerer iodepth und numthreads bei random access}: wenn nur ein thread immer nur eine request schickt, dann ist das fragmentieren der request in kleinere blöcke nicht schlimm. aber wenn mehrere requests gleichzeitig abgearbeitet werden, springt der I/O thread hin und her zwischen der abarbeitung von fragmenten aus verschiedenen requests. dh es ist quasi noch mehr random access und auch mit kleinerer block size
+
+\todo{passt diese theorie zu dem was wir bei mehreren requests als sequentielle performance sehen?} ja: der IO thread springt zwar immer noch zwischen fragmenten verschiedener requests hin und her, diese sind aber nicht ansatzweise so weit verteilt wie bei random access. die anfragen liegen bei sequentiellem lesen ja relativ nah beieinander, demnach also auch die fragmente der verschieden anfragen. deswegen leidet veracrypt's performance bei sequentiellem lesen nicht so sehr unter mehreren gleichzeitigen anfragen.
 
 \begin{figure}[htb!]
 	\center
@@ -275,6 +227,7 @@ In some of the experiments in this section, multiple threads concurrently execut
 	\label{fig:performance.hwexperiments.optrandthreadsqueue}
 \end{figure}
 
+\clearpage
 \subsection{Measuring Read Rates Over Time}
 \label{chap:performance.hwexperiments.readrateovertime}
 \texttt{fio} comes with an option to enable the logging of current read rates, \texttt{write\_bw\_log}. By default, one entry in the log file corresponds to one completed I/O request. This is not what we wanted for two reasons: firstly, this does not scale well with larger block sizes, as there are fewer I/O operations when using larger blocks; and secondly, we are not interested in single I/O requests, but the general trend over time (the logs with one line per completed request contain large read rate spikes which we do not care about). Fortunately, there is also an option to log the average bandwidth of the last $N$ milliseconds, where the value of $N$ is configurable: \texttt{log\_avg\_msec}. We found that \todo{16} ms is a good value for this option, yielding data with reasonable high time resolution but not too much spikes from the completion of individual I/O requests.

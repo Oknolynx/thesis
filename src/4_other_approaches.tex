@@ -177,7 +177,7 @@ VeraCrypt supports different block ciphers, including AES, Serpent, and Twofish 
 
 Unlocking a volume always requires a password from the user. The user can also specify the parameters needed for the decryption of the header, including parameters for key derivation and the encryption scheme. If they are not specified, VeraCrypt tries all possible combinations of parameters. The first four bytes of a decrypted header are always ``VERA'' (in ASCII). The plaintext header also contains a checksum of its last 256 bytes. If both the first four bytes and the checksum match their respective expected value, decryption is considered successful \cite{Veracrypt}.
 
-Using an unlocked partition is practically equivalent to what is described in \autoref{chap:background.luks2.using}.
+Using an unlocked partition is mostly equivalent to what is described in \autoref{chap:background.luks2.using}.
 
 \subsection{Peeking Into VeraCrypt's Source Code}
 \label{chap:otherapproaches.veracrypt.peeking}
@@ -185,7 +185,7 @@ In this chapter we will take a look at the source code of the kernel driver that
 
 It should be noted that VeraCrypt's source code includes computer that we will not discuss, namely a ``DeviceFilter'' and ``VolumeFilter''. The reason for this is that these components are not used when a VeraCrypt volume is unlocked and mounted in portable (i.e. non-install) mode,\footnote{\label{fn:otherapproaches.veracrypt.othercomponents} At least not in the setup that we used, which were the default settings except that the volume was mounted with read-only access.} which is how we conducted our experiments with VeraCrypt. We will therefore focus on the components that are used in this scenario.
 
-The basic architecture of VeraCrypt is shown in \autoref{fig:otherapproaches.veracrypt.architecture}. When started, the user space executable installs a kernel driver using the \texttt{CreateService} Win32 API. VeraCrypt can operate in portable mode, which has the effect that the driver installation is only temporary\footnote{\label{fn:otherapproaches.veracrypt.createservice} See l. 4614f., 4355f. and 4455f. in \texttt{src/Common/Dlgcode.c}.}. This driver creates the so-called root device,\footnote{\label{fn:otherapproaches.veracrypt.createroot} See l. 375 in \texttt{Ntdriver.c}.} \texttt{\textbackslash Device\textbackslash VeraCrypt}, with which the user space program can communicate via IOCTLs.
+The basic architecture of VeraCrypt is shown in \autoref{fig:otherapproaches.veracrypt.architecture}. When started, the user space executable installs a kernel driver using the \texttt{CreateService} Win32 API. VeraCrypt can operate in portable mode, which has the effect that the driver installation is only temporary\footnote{\label{fn:otherapproaches.veracrypt.createservice} See l. 4614f., 4355f., and 4455f. in \texttt{src/Common/Dlgcode.c}.}. This driver creates the so-called root device,\footnote{\label{fn:otherapproaches.veracrypt.createroot} See l. 375 in \texttt{Ntdriver.c}.} \texttt{\textbackslash Device\textbackslash VeraCrypt}, with which the user space program can communicate via IOCTLs.
 
 To unlock and mount a VeraCrypt volume, the user space application sends the \texttt{TC\_IOCTL\_MOUNT\_VOLUME} device control code to the root device. Its driver then creates a new device,\footnote{\label{fn:otherapproaches.veracrypt.createdevice} See l. 2622f. and 4076 in \texttt{Ntdriver.c}.} which will be used to mount the volume. All work of unlocking the volume and processing IRPs for the newly created device is done in its own thread\footnote{\label{fn:otherapproaches.veracrypt.volumethread} See l. 4123 and 3074f. in \texttt{Ntdriver.c}.}.
 
@@ -222,14 +222,12 @@ The device for an unlocked volume holds a file handle to the device object for t
 
 Similar to \texttt{dm-crypt}, the VeraCrypt driver uses queues to manage incoming and pending IRPs. All I/O operations for a volume pass through up to three queues, each serviced by its own thread:\footnote{\label{fn:otherapproaches.veracrypt.queuecreation} See l. 970f. in \texttt{EncryptedIoQueue.c}.}
 \begin{descitemize}
-	\item[Main queue] All Read and Write IRPs are inserted into this ``encrypted I/O queue''. The thread responsible for this queue checks and adjusts the request parameters, if needed, and encrypts the data for write requests. Requests that were not rejected because of invalid parameters or other errors are then inserted into the I/O queue.\footnote{\label{fn:otherapproaches.veracrypt.mainqueue} See l. 639 in \texttt{Ntdriver.c} and l. 886, 673f., 822f. and 844 in \texttt{EncryptedIoQueue.c}.}
+	\item[Main queue] All Read and Write IRPs are inserted into this ``encrypted I/O queue''. The thread responsible for this queue checks and adjusts the request parameters, if needed, and encrypts the data for write requests. Requests that were not rejected because of invalid parameters or other errors are fragemented into blocks of up to 256 KiB, and these fragments are inserted into the I/O queue. This is done ``to enable efficient overlapping of encryption and IO operations.''\footnote{\label{fn:otherapproaches.veracrypt.mainqueue} See l. 639 in \texttt{Ntdriver.c}, l. 886, 673f., 771f., 822f., and 844 in \texttt{EncryptedIoQueue.c}, and l. 23 in \texttt{EncryptedIoQueue.h}.}
 	\item[I/O queue] This queue is responsible for initiating the I/O for incoming requests, and adding successful read requests to the completion queue. If the last read succeeded and there are no outstanding I/O requests, it also performs another read operation. This reads the same amount of bytes as the last operation and stores it in a read ahead buffer. For each read request, VeraCrypt checks whether it can fulfil it using the read ahead buffer, before falling back to reading from the encrypted volume.\footnote{\label{fn:otherapproaches.veracrypt.ioqueue} See l. 456f., 490f., 502f., and 329f. in \texttt{EncryptedIoQueue.c}.}
-	\item[Completion queue] This is where the decryption of successful read requests happens.\footnote{\label{fn:otherapproaches.veracrypt.completionqueue} See l. 292f. in \texttt{EncryptedIoQueue.c}.}
+	\item[Completion queue] This is where the decryption of read requests happens.\footnote{\label{fn:otherapproaches.veracrypt.completionqueue} See l. 292f. in \texttt{EncryptedIoQueue.c}.}
 \end{descitemize}
 
 When no longer needed, sensitive data in memory, such as a volume's password, is overwritten with zeros. This is done using the \texttt{RtlSecureZeroMemory} function,\footnote{\label{fn:otherapproaches.veracrypt.zeromem} See l. 400 in \texttt{src/Common/Tcdefs.h} and l. 2647f. in \texttt{Ntdriver.c}.} which is guaranteed not to be optimized out by the compiler \cite{Wdk}.
-%
-%\todo{appendix on how to compile veracrypt in debug mode using VS 2019?}
 
 \section{BitLocker}
 \label{chap:otherapproaches.bitlocker}
@@ -267,8 +265,8 @@ Refer to \autoref{chap:background.luks2.using} for the usage of an unlocked part
 In this section we will take a look at parts of \texttt{fvevol.sys}, which is the ``BitLocker Drive Encryption Driver'' (see \autoref{fig:otherapproaches.bitlocker.fvevol}). \texttt{fvevol.sys} has already been mentioned in \autoref{fig:background.kerneldriver.devicestack} and \autoref{fig:background.kerneldriver.registry}. From there it is apparent that it is a lower filter driver that gets loaded for all volumes.
 
 All disassembled code shown in this section is also reproduced in \autoref{app:disassembly}.
-
-Looking at \texttt{cryptsetup}'s implementation of its support for BitLocker volumes may also be interesting. This is left as an exercise for the curious reader.
+%
+%Looking at \texttt{cryptsetup}'s implementation of its support for BitLocker volumes may also be interesting. This is left as an exercise for the curious reader.
 
 \begin{figure}[htb!]
 	\center
