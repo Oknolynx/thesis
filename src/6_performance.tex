@@ -117,7 +117,7 @@ Combining our observations from both access patterns, we \todo{draw these conclu
 \end{itemize}
 
 \paragraph{Another Optimization Attempt}
-We also tried optimizing \texttt{luks2flt}'s performance by restricting its cryptographic capabilities to AES-256-XTS and dropping support for AES-128-XTS. This enabled removing some \texttt{if}-\texttt{else} constructs that dispatched de-/encryption functions based on whether AES-128 or AES-256 was used. Even though these conditionals were located in a performance critical section, we found no significant read rate changes. Our theory for why this was the case is the following: in this setup, our driver was only ever used for one LUKS2 partition and therefore always took the same path through the \texttt{if}-\texttt{else} (either always AES-128 or always AES-256). This trained the CPU's branch prediction on this one specific path. Thus, after a short training phase, the CPU always speculatively executed the correct path, resulting in the same performance as without the \texttt{if}-\texttt{else}. The same reasoning applies for a use case where \texttt{luks2flt} is filtering multiple volumes that all use the same AES-XTS variant, \todo{although we did not test this}.
+We also tried optimizing \texttt{luks2flt}'s performance by restricting its cryptographic capabilities to AES-256-XTS and dropping support for AES-128-XTS. This enabled removing some \texttt{if}-\texttt{else} constructs that dispatched de-/encryption functions based on whether AES-128 or AES-256 was used. Even though these conditionals were located in a performance critical section, we found no significant read rate changes. Our theory for why this was the case is the following: in this setup, our driver was only ever used for one LUKS2 partition and therefore always took the same path through the \texttt{if}-\texttt{else} (either always AES-128 or always AES-256). This trained the CPU's branch prediction on this one specific path. Thus, after a short training phase, the CPU always speculatively executed the correct path, resulting in the same performance as without the \texttt{if}-\texttt{else}. The same reasoning applies for a use case where \texttt{luks2flt} is filtering multiple volumes that all use the same AES-XTS variant, although we did not test this.
 
 \section{Real Hardware Experiments}
 \label{chap:performance.hwexperiments}
@@ -147,7 +147,7 @@ Additional to the parameter combinations already used for testing in the virtual
 
 We observe the following:
 \begin{itemize}
-	\item Except for a block size of 4096 KiB, where VeraCrypt has a 2\% higher rate, BitLocker always has the highest sequential read rate.
+	\item Except for a block size of 4096 KiB, where VeraCrypt has a 2\% higher rate, BitLocker always has the highest sequential read rate. It is up to 156.0\% higher than \texttt{luks2flt}'s (at 128 KiB), and up to 53.0\% higher than VeraCrypt's (at 4 KiB).
 	\item BitLocker reaches its maximum at a block size of 1024 KiB, VeraCrypt at 512, \texttt{luks2flt} at 8192.
 	\item \texttt{luks2flt} never reaches the performance of the other two drivers. BitLocker has an up to 156\% higher read rate (at 128 KiB), VeraCrypt up to 134\% (at 128 KiB).
 \end{itemize}
@@ -224,7 +224,7 @@ We observe the following:
 
 We observe the following:
 \begin{itemize}
-	\item VeraCrypt and BitLocker both have the highest sequential read rate for six of the twelve tested block sizes.
+	\item VeraCrypt and BitLocker both have the highest sequential read rate for respectively six of the twelve tested block sizes.
 	\item VeraCrypt reaches its maximum rate at 256 KiB, BitLocker at 512, our driver at 1024.
 	\item Both other drivers perform significantly better than \texttt{luks2flt} for most block sizes. BitLocker has an up to 151\% higher rate (at 512 KiB), VeraCrypt up to 140\% (at 32 KiB).
 \end{itemize}
@@ -264,7 +264,7 @@ We observe the following:
 
 We observe the following:
 \begin{itemize}
-	\item Except for 16, 32, and 8192 KiB blocks, where VeraCrypt is the fastest, BitLocker has the highest sequential read rate.
+	\item Except for 16, 32, and 8192 KiB blocks, where VeraCrypt is the fastest, BitLocker has the highest sequential read rate. Compared to our driver, BitLocker has an up to 135\% advantage (at 32 KiB), and VeraCrypt has an up to 165\% higher rate (at 16 KiB).
 	\item BitLocker and VeraCrypt have their respective maximum read rates at 32 KiB, \texttt{luks2flt} at 4096.
 	\item All drivers' read rates suddenly plummet down at 8192 KiB.
 \end{itemize}
@@ -289,15 +289,19 @@ We observe the following:
 \end{itemize}
 
 \paragraph{Interpretation}
-\todo{Regrettably, the disabled optimizations led to a performance regression. Check if we can re-enable some options again and increase performance?}
+\todo{todo}
 \begin{itemize}
-	\item \todo{mögliche erklärung} für veracrypt's schlechtere performance bei größerer iodepth und numthreads bei random access: wenn nur ein thread immer nur eine request schickt, dann ist das fragmentieren der request in kleinere blöcke nicht schlimm. aber wenn mehrere requests gleichzeitig abgearbeitet werden, springt der I/O thread hin und her zwischen der abarbeitung von fragmenten aus verschiedenen requests. dh es ist quasi noch mehr random access und auch mit kleinerer block size
-	\item \todo{passt diese theorie zu dem was wir bei mehreren requests als sequentielle performance sehen?} ja: der IO thread springt zwar immer noch zwischen fragmenten verschiedener requests hin und her, diese sind aber nicht ansatzweise so weit verteilt wie bei random access. die anfragen liegen bei sequentiellem lesen ja relativ nah beieinander, demnach also auch die fragmente der verschieden anfragen. deswegen leidet veracrypt's performance bei sequentiellem lesen nicht so sehr unter mehreren gleichzeitigen anfragen.
+	\item In almost all cases, BitLocker has the highest read rate, regardless of the access pattern. As already detailed in \autoref{chap:performance.vmexperiments}, this is not really surprising, as it is not a fair comparison. Nonetheless, from time to time VeraCrypt's sequential read rate is quite close to BitLocker's, and our driver's multi-threaded random-access read rate can almost keep up with BitLocker's.
+	\item Regrettably, but also unsurprisingly, the disabled optimization options led to a performance regression. Comparing the measurements with the same parameters (i.e. \texttt{iodepth=1} and \texttt{numjobs=1}), we can see that on real hardware \texttt{luks2flt} cannot compete with VeraCrypt as well as in the virtual machine. This is the case for both sequential and random access. \todo{Check if we can re-enable some options again and increase performance?}
+	\item Our driver's sequential read rate is consistently lower than that of the other two drivers. The maximum advantage they have mostly lies between 130\% and 150\%. However, when at least one of the \texttt{iodepth} or \texttt{numjobs} parameter has a value of 16, \texttt{luks2flt} can almost catch up with one of the other drivers for large block sizes.
+	\item Even though \texttt{luks2flt} cannot compete at random access when only one I/O request is sent at a time (at least not for large block sizes), the situation looks differently for \texttt{iodepth=16} and/or \texttt{numjobs=16}: \todo{todo}
+	\item \todo{mögliche erklärung} für veracrypt's schlechtere performance bei größerer iodepth und numthreads bei random access: wenn nur ein thread immer nur eine request schickt, dann ist das fragmentieren der request in kleinere blöcke nicht schlimm (weil sequentiell in die queue eingefügt). aber wenn mehrere requests gleichzeitig abgearbeitet werden, springt der I/O thread hin und her zwischen der abarbeitung von fragmenten aus verschiedenen requests. dh es ist quasi noch mehr random access und auch mit kleinerer block size \todo{ne das kann nicht sein, weil die fragmente fifo bearbeitet werden, dh es wird immer eine request am stück abgearbeitet, bevor zur nächsten gesprungen wird}
+	\item \todo{neue theorie}: veracrypt hat fest jeweils nur einen thread zur abarbeitung der main, i/o, und completion queue. vlt werden die einfach überlastet, wenn so viele requests gleichzeitig reinkommen? luks2flt hat dieses problem nicht, weil der keine eigenen threads startet, sondern immer in dem thread context läuft, in dem er vom i/o manager aufgerufen wird. dh da stehen quasi mehr threads zur verfügung. queues waren auch schon bei dm-crypt teilweise ein performance problem (s. \cite{Korchagin2020})
 \end{itemize}
 
 \subsection{Measuring Read Rates Over Time}
 \label{chap:performance.hwexperiments.readrateovertime}
-\texttt{fio} comes with an option to enable the logging of current read rates, \texttt{write\_bw\_log}. By default, one entry in the log file corresponds to one completed I/O request. This is not what we wanted for two reasons: firstly, this does not scale well with larger block sizes, as there are fewer I/O operations when using larger blocks; and secondly, we are not interested in single I/O requests, but the general trend over time (the logs with one line per completed request contain large read rate spikes which we do not care about). Fortunately, there is also an option to log the average bandwidth of the last $N$ milliseconds, where the value of $N$ is configurable: \texttt{log\_avg\_msec}. We found that \todo{16} ms is a good value for this option, yielding data with reasonable high time resolution but not too much spikes from the completion of individual I/O requests.
+\texttt{fio} comes with an option to enable the logging of current read rates, \texttt{write\_bw\_log}. By default, one entry in the log file corresponds to one completed I/O request. This is not what we wanted for two reasons: firstly, this does not scale well with larger block sizes, as there are fewer I/O operations when using larger blocks; and secondly, we are not interested in single I/O requests, but the general trend over time (the logs with one line per completed request contain large read rate spikes which we do not care about). Fortunately, there is also an option to log the average bandwidth of the last $N$ milliseconds, where the value of $N$ is configurable: \texttt{log\_avg\_msec}. We found that 32 ms is a good value for this option, yielding data with reasonable high time resolution, but not too much spikes from the completion of individual I/O requests.
 
 \begin{figure}[htb!]
 	\center
@@ -305,7 +309,7 @@ We observe the following:
 	\caption[
 		Sequential read rates over time
 	]{
-		Sequential read rates over time. \todo{todo} \todo{256 KiB blocks, 16 ms average \texttt{iodepth=1}}
+		Sequential read rates over time. \todo{todo} \todo{32 KiB blocks, 32 ms average \texttt{iodepth=1}}
 	}
 	\label{fig:performance.hwexperiments.seqovertime}
 \end{figure}
@@ -316,7 +320,7 @@ We observe the following:
 	\caption[
 		Distribution of sequential read rates over time
 	]{
-		Distribution of sequential read rates over time. \todo{todo} \todo{256 KiB blocks, 16 ms average \texttt{iodepth=1}}
+		Distribution of sequential read rates over time. \todo{todo} \todo{32 KiB blocks, 32 ms average \texttt{iodepth=1}}
 	}
 	\label{fig:performance.hwexperiments.seqovertimebox}
 \end{figure}
@@ -327,7 +331,7 @@ We observe the following:
 	\caption[
 		Random-access read rates over time
 	]{
-		Random-access read rates over time. \todo{todo} \todo{256 KiB blocks, 16 ms average \texttt{iodepth=1}}
+		Random-access read rates over time. \todo{todo} \todo{32 KiB blocks, 32 ms average \texttt{iodepth=1}}
 	}
 	\label{fig:performance.hwexperiments.randovertime}
 \end{figure}
@@ -338,9 +342,13 @@ We observe the following:
 	\caption[
 		Distribution of random-access read rates over time
 	]{
-		Distribution of random-access read rates over time. \todo{256 KiB blocks, 16 ms average \texttt{iodepth=1}}
+		Distribution of random-access read rates over time. \todo{32 KiB blocks, 32 ms average \texttt{iodepth=1}}
 	}
 	\label{fig:performance.hwexperiments.randovertimebox}
 \end{figure}
 
-\todo{explain trends for other parameter values (smaller/bigger blocks, ioqueue=16), check how it looks for HDD?}
+\todo{explain trends for other parameter values (smaller/bigger blocks), check how it looks for HDD?} % iodepth=16?
+\begin{itemize}
+	\item higher block size means more jagged/variation because the completion of one I/O request has more impact on the read rate the bigger it is (i.e. the boxes and whiskers have more height, less outliers)
+	% \item \texttt{iodepth=16} makes lines smoother most of the time (i.e. the boxes and whiskers in the box plot have smaller height, sometimes less outliers). for sequential access rather: more regular lines
+\end{itemize}
