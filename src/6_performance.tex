@@ -109,7 +109,7 @@ We observe the following:
 \end{itemize}
 
 \paragraph{Discussion}
-Combining our observations from both access patterns, we draw the following \todo{conclusions}:
+Combining our observations from both access patterns, we close with the following thoughts:
 \begin{itemize}[beginpenalty=10000]
 	\item BitLocker is the best-performing driver, both at sequential and random-access reading. This is not really surprising, as it is not a fair competition: one driver is the proprietary product of Microsoft, who also wrote the operating system running the driver; and the other two are open source projects by third parties. Microsoft's driver profits from their expertise in Windows' inner workings, and can also take advantage of undocumented internals.
 	\item VeraCrypt has a higher sequential read rate than \texttt{luks2flt}, with the difference decreasing for larger block sizes. The former is probably because of VeraCrypt's read ahead caching, as \texttt{luks2flt} does not perform any caching. The latter may be because of VeraCrypt's fragmenting of larger blocks into 256 KiB blocks. This means that the I/O performed by the driver can only profit so much from block sizes larger than 256 KiB. This theory is supported by the fact that VeraCrypt reaches its peak sequential read rate at exactly this block size. As already mentioned in \autoref{chap:otherapproaches.veracrypt.peeking}, the fragmenting is done to overlap I/O and cryptographic operations. However, the alleged gains from this overlapping do not seem to be able to cancel out the losses by capping the effective block size at 256 KiB.
@@ -290,20 +290,20 @@ We observe the following:
 \end{itemize}
 
 \paragraph{Discussion}
-Combining our observations from all measurements, we draw the following \todo{conclusions}:
+Combining our observations from all measurements, we close with the following thoughts:
 \begin{itemize}[beginpenalty=10000]
 	\item In almost all cases, BitLocker has the highest read rate, regardless of the access pattern. As already detailed in \autoref{chap:performance.vmexperiments}, this is not really surprising, because it is not a fair comparison. Nonetheless, from time to time VeraCrypt's sequential read rate is quite close to BitLocker's, and our driver's multi-threaded random-access read rate can almost keep up with BitLocker's.
-	\item Regrettably, the disabled optimization options led to a performance regression. Comparing the measurements with the same parameters (i.e. \texttt{iodepth=1} and \texttt{numjobs=1}), we can see that on real hardware \texttt{luks2flt} cannot compete with VeraCrypt as well as in the virtual machine. This is the case for both sequential and random access. \todo{Check if we can re-enable some options again and increase performance?}
+	\item Regrettably, the disabled optimization options led to a performance regression. Comparing the measurements with the same parameters (i.e. \texttt{iodepth=1} and \texttt{numjobs=1}), we can see that on real hardware \texttt{luks2flt} cannot compete with VeraCrypt as well as in the virtual machine. This is the case for both sequential and random access.
 	\item Our driver's sequential read rate is consistently lower than that of the other two drivers. As discussed in the previous section, VeraCrypt probably has better sequential performance because of its read ahead caching. The maximum advantage the other drivers have over \texttt{luks2flt} mostly lies between 130\% and 150\%. However, when at least one of the \texttt{iodepth} or \texttt{numjobs} parameter has a value of 16, \texttt{luks2flt} can almost catch up with one of the other drivers for large block sizes.
 	\item Even though \texttt{luks2flt} cannot compete at random access when only one I/O request is sent at a time (at least not for large block sizes), the situation looks differently for \texttt{iodepth=16} and/or \texttt{numjobs=16}: here, our driver always has a higher read rate than VeraCrypt, and even BitLocker has an at most 55\% higher rate. BitLocker as a proprietary driver is out of reach for theorizing. However, we have a suspicion why VeraCrypts manages multiple requests at the same time not as well as \texttt{luks2flt}: every read request has to pass through three queues (Main, I/O, and Completion), and every queue only has one thread working on its requests. \cite{Korchagin2020} showed that removing some queues in \texttt{dm-crypt} can lead to significant read rate improvements, and that may be the case for VeraCrypt, too.
 	\item In the last section, we noted that VeraCrypt's sequential read rate peaked at 256 KiB blocks. We also highlighted that this was the size of the fragments that larger blocks get broken up into. In this section's measurements, this generally was also the case: VeraCrypt's sequential read rate either peaked at a block size of 256 or 512 KiB or did not improve by much for larger blocks.
 \end{itemize}
 
-\subsection{Measuring Read Rates Over Time}
+\subsection{Measuring Read Rates over Time}
 \label{chap:performance.hwexperiments.readrateovertime}
 \texttt{fio} comes with an option to enable the logging of current read rates, \texttt{write\_bw\_log}. By default, one entry in the log file corresponds to one completed I/O request. This is not what we wanted for two reasons: firstly, this does not scale well with larger block sizes, as there are fewer I/O operations when using larger blocks; and secondly, we are not interested in single I/O requests, but the general trend over time (the logs with one line per completed request contain large read rate spikes which we do not care about). Fortunately, there is also an option to log the average bandwidth of the last $N$ milliseconds, where the value of $N$ is configurable: \texttt{log\_avg\_msec}. We found that 32 ms is a good value for this option, yielding data with reasonable high time resolution, but not too much spikes from the completion of individual I/O requests.
 
-Note that all measurements in this section are values of only one run (per measurement), and not averages of three runs of the same job like in the section before. The results therefore need to be interpreted with that in mind.
+Note that all measurements in this section are values of single runs, and not averages of three runs of the same job like in the section before.
 
 \paragraph{Results and Observations}
 \autoref{fig:performance.hwexperiments.seqovertime} shows how BitLocker's, VeraCrypt's, and \texttt{luks2flt}'s read rates behave over time for a block size of 32 KiB. BitLocker's rate mostly stays between 367 and 375 MiB/s, with two short sections where it is between 375 and 383 MiB/s and some spikes, mostly downward. VeraCrypt's read rate generally falls between 226 and 290 MiB/s, but heavily fluctuates in that range. Except for the first 2.5 seconds, where it fluctuates between 149 and 169 MiB/s, \texttt{luks2flt}'s rate mostly stays between 161 and 173 MiB/s.
@@ -334,7 +334,8 @@ Note that all measurements in this section are values of only one run (per measu
 
 We observe the following:
 \begin{itemize}[beginpenalty=10000]
-	\item \todo{todo}
+	\item BitLocker has the highest sequential read rate, VeraCrypt comes second, and our driver comes third.
+	\item \texttt{luks2flt} has the least variation in read rate values. Bitlocker comes close, but its outliers are further away from the mean. VeraCrypt's read rate has significantly more variation over time than the other drivers'.
 \end{itemize}
 
 \autoref{fig:performance.hwexperiments.randovertime} shows the drivers' random-access read rates over time. BitLocker's read rates switches between lying in the 98 to 100 MiB/s range and the 94 to 96 MiB/s range, with some mostly downward spikes. \texttt{luks2flt} has a read rate that concentrates around either 64 MiB/s or 69 MiB/s, with some spikes in both directions. VeraCrypt's rate generally oscillates around 61 MiB/s, with exceptions, mostly at the beginning and the end of the run.
@@ -365,17 +366,16 @@ We observe the following:
 
 We observe the following:
 \begin{itemize}[beginpenalty=10000]
-	\item \todo{todo}
+	\item BitLocker has the highest radnom-access read rate, our driver comes second, and VeraCrypt closely follows behind.
+	\item VeraCrypt's read rate has the least variation, and BitLocker's and \texttt{luks2flt}'s both alternate between two small ranges. The rates of all three drivers contain occasional outliers.
 \end{itemize}
 
-\todo{explain trends for other parameter values (smaller/bigger blocks), check how it looks for HDD?}: higher block size means more jagged/variation because the completion of one I/O request has more impact on the read rate the bigger it is (i.e. the boxes and whiskers have more height, less outliers)
-
-\todo{looking at other block sizes, we could not find a general trend that one driver showed more or less variation in read rate than the others.}
-
-\todo{we chose to display the graphs for 32 KiB blocks here because they seemed a good compromise between not being completely on one end of the spectrum of block sizes and not being to jagged.}
+We also looked at other block sizes than 32 KiB (all that we tested in the last section), and found this general trend: the larger the blocks, the more variations in the read rate (i.e. the boxes and whiskers stretched out farther, and there were also less outliers). We chose to display the graphs for 32 KiB blocks because they seemed a good compromise between being neither completely on one end of the block size range nor too jagged.
 
 \paragraph{Discussion}
-Combining our observations from both access patterns, we draw the following \todo{conclusions}:
-\begin{itemize}
-	\item \todo{todo}
+Combining our observations, we close with the following thoughts:
+\begin{itemize}[beginpenalty=10000]
+	\item The read rates in our measurements match what we saw in the last section (see \autoref{fig:performance.hwexperiments.optseq} and \autoref{fig:performance.hwexperiments.optrand}).
+	\item VeraCrypt had the most variation in read rate for sequential reading, and the least for random-access reading. Looking at our measurements over time for other block rates however we could not find a general trend; no driver regularly showed more or less variation in read rate than the others. However, these were all measurements of single runs. To find or rule out trends with more certainty, measurements from multiple runs should be combined.
+	\item The trend that higher block sizes lead to more variation in the read rate probably occurs because the completion of a single I/O request has more impact on the short-time read rate the bigger the read block is.
 \end{itemize}
