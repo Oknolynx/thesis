@@ -4,7 +4,7 @@ This chapter introduces information and concepts that are needed to understand b
 
 \section{LUKS2 Disk Encryption}
 \label{chap:background.luks2}
-\emph{Linux Unified Key Setup 2}, or short LUKS2, is the second version of a disk encryption standard. It provides a specification \cite{Broz2018} for a on-disk format for storing the encryption metadata as well as the encrypted user data. Unlocking an encrypted disk is achieved by providing one of possibly multiple passphrases or keyfiles. The intended usage of LUKS2 is together with the Linux device mapper subsystem (described in \autoref{chap:otherapproaches.linux.dm}), but that is not mandatory.\footnote{\label{fn:luks2windows} As we show in this thesis, it is possible to make the combination of LUKS2 and Windows work.}
+\emph{Linux Unified Key Setup 2}, or short LUKS2, is the second version of a disk encryption standard. It provides a specification \cite{Broz2018} for a on-disk format for storing the encryption metadata as well as the encrypted user data. Unlocking an encrypted disk is achieved by providing one of possibly multiple passphrases or keyfiles. The intended usage of LUKS2 is in combination with the Linux device mapper subsystem (described in \autoref{chap:otherapproaches.linux.dm}), but that is not mandatory.\footnote{\label{fn:luks2windows} As we show in this thesis, it is possible to make the combination of LUKS2 and Windows work.}
 
 The differences between the original LUKS and LUKS2 are minor. According to \cite{Broz2018}, LUKS2 adds ``more flexible ways of storing metadata, redundant information to provide recovery in the case of corruption in a metadata area, and an interface to store externally managed metadata for integration with other tools.'' Practically, this means that LUKS2 has a different on-disk layout and, among other things, supports more password hashing algorithms (more precisely, password-based key derivation functions).
 
@@ -49,7 +49,7 @@ Our library does provide access to the raw decrypted user data, but the practica
 	\caption[
 		LUKS2 on-disk format
 	]{
-		LUKS2 on-disk format (modified after \cite{Broz2018}). The complete header consists of three areas: a binary header of exactly one 4096-byte sector, JSON metadata, and the binary keyslots data. A \emph{keyslot} is an ``encrypted area on disk that contains a key'' \cite{Broz2018}. For redundancy, the binary header and the JSON metadata are stored twice. After that follow one or areas containing encrypted user data. The specification calls these areas \emph{segments}.
+		LUKS2 on-disk format (modified after \cite{Broz2018}). The complete header consists of three areas: a binary header of exactly one 4096-byte sector, JSON metadata, and the binary keyslots data. A \emph{keyslot} is an ``encrypted area on disk that contains a key'' \cite{Broz2018}. For redundancy, the binary header and the JSON metadata are stored twice. After that follow one or more areas containing encrypted user data. The specification calls these areas \emph{segments}.
 	}
 	\label{fig:background.luks2.ondisk}
 \end{figure}
@@ -214,7 +214,7 @@ The LUKS2 specification allows for multiple segments in one partition. To make t
 
 To unlock a segment means to derive the cryptographic key that is needed for reading decrypted or writing encrypted data. This key is called the segment's \emph{master key}.
 
-LUKS2 uses a process called \emph{anti-forensic splitting} to store the master key on disk. This method was introduced in \cite{Fruhwirth2005}. It is used to diffuse the key's bytes into a longer sequence of bytes that has the following property: if at least one bit of the diffused sequence is changed, the key cannot be recovered. This is achieved by a clever combination of XOR and a hash function. The motivation behind this to make it easier (or possible) to dispose of an old key in such a way that it cannot be recovered from the disk. This is because it is much more feasible to partially erase a long sequence of bytes than to completely erase a short sequence. Erasing here means to overwrite the data in such a way that it cannot be recovered, which is not as trivial as one might think.
+LUKS2 uses a process called \emph{anti-forensic splitting} to store the master key on disk. This method was introduced in \cite{Fruhwirth2005}. It is used to diffuse the key's bytes into a longer sequence of bytes that has the following property: if at least one bit of the diffused sequence is changed, the key cannot be recovered. This is achieved by a clever combination of XOR and a hash function. The motivation behind this is to make it easier (or possible) to dispose of an old key in such a way that it cannot be recovered from the disk. This is because it is much more feasible to partially erase a long sequence of bytes than to completely erase a short sequence.\footnote{\label{fn:background.luks2.blockerasure} ``If the probability to destroy a certain block of data is $0 \le p \le 1$, then the probability that the block survives is $1 - p$. Given a set of data consisting of $n$ data items, the probability to erase the whole data set becomes worse since $p^n$ becomes smaller as $n$ becomes larger. But the probability that the whole set survives, $(1 - p)^n$, becomes smaller as well with increasing $n$. If $(1 - p)^n$ becomes smaller, than [sic] $1 - (1 - p)^n$ must become larger, which is exactly the chance that the whole block does not survive.'' \cite{Fruhwirth2005}} Erasing here means to overwrite the data in such a way that it cannot be recovered, which is not as trivial as one might think.
 
 \cite{Fruhwirth2005} calls the operation that splits data anti-forensically AFsplit and the recovery operation AFmerge. We will adhere to this convention.
 
@@ -313,7 +313,7 @@ The keyslots area on the disk is large enough to store multiple split and encryp
 			\item The user supplies a password.
 			\item One of the available keyslots is selected.
 			\item Using the password and keyslot, the master key is decrypted as described above.
-			\item The derived master key is hashed and the result compared to the corresponding digest. Which digest and what hash parameters to used is defined in the JSON section.
+			\item The derived master key is hashed and the result compared to the corresponding digest. Which digest and what hash parameters to be used is defined in the JSON section.
 			\item If the digests match, the master key has been successfully decrypted. Else go to step 2 and select a keyslot that has not been used yet.
 			\item If the master key could not be decrypted with all available keyslots, the supplied password was not correct.
 		\end{enumerate}
@@ -369,9 +369,6 @@ Writing a Windows kernel driver is a non-trivial endeavour. Therefore, this chap
 
 \subsection{Structure and Hierarchy of the Windows Operating System}
 \label{chap:background.kerneldriver.oshierarchy}
-% possible further content for this or later sections
-% - DLLs?
-% - processes? (page 8) threads? (page 18)
 First, we will introduce some basic concepts of the Windows operating system that will be relevant in the following sections. Please note that we will focus on Windows 10 running on the x64 architecture, as that is the target of our driver. Some details may be different in other versions of Windows, though most information should still be valid.
 
 The definitive reference for all detailed information on the inner workings of Windows is \cite{Yosifovich2017}. The online documentation of the Win32 API \cite{Win32} and the Windows Driver Kit (WDK) \cite{Wdk} both provide valuable information. It may also sometimes be useful to directly look at the data structure definitions provided by the WDK header files (\texttt{ntddk.h}, \texttt{ntifs.h}, and \texttt{wdm.h} are the most useful) \cite{Yosifovich2017}.
@@ -380,7 +377,7 @@ There are also some invaluable tools to directly take a look at OS internals. Mo
 
 The Windows \emph{registry} is a database for storing system-wide and per-user configuration. It can also be used to query the current state of the system, e.g. performance counters or information on loaded device drivers \cite{Yosifovich2017}. Each data entry in the registry, called a \emph{value}, has a path, also known as its \emph{key}, and a name. This name is used to distinguish different entries stored under the same key. The keys are organized hierarchically in a tree, similar to file paths \cite{Win32}. In the context of registry keys, \texttt{HKLM} stands for \texttt{HKEY\_LOCAL\_MACHINE}.
 
-Windows uses the physically available RAM to back its 64-bit address space of virtual memory. See \autoref{fig:background.kerneldriver.winvirtualmemory} for how the address range is used. The addresses are grouped into so-called \emph{pages}, which are typically 4KB large. Most systems have less physical RAM available than the sum of virtual memory used by all processes. The memory manager solves this problem by transferring pages currently not in use to disk. This is called \emph{paging}. When a virtual address in a page that currently resides on disk is accessed, a \emph{page fault} occurs. In that case, the needed page is loaded back into memory. This process is completely transparent to applications, aside from latency introduced by paging. However, this will become relevant when writing drivers, as driver code may be called in situations where page faults are not allowed (see \autoref{chap:background.kerneldriver.wdm} for more) \cite{Yosifovich2017}.
+Windows uses the physically available RAM to back its 64-bit address space of virtual memory. See \autoref{fig:background.kerneldriver.winvirtualmemory} for how the address range is used. The addresses are grouped into so-called \emph{pages}, which are typically 4KB large. Most systems have less physical RAM available than the sum of virtual memory used by all processes. The memory manager solves this problem by transferring pages currently not in use to disk. This is called \emph{paging}. When a virtual address in a page that currently resides on disk is accessed, a \emph{page fault} occurs. In that case, the needed page is loaded back into memory. This process is completely transparent to applications, aside from latency introduced by paging. However, this will become relevant when writing drivers, as driver code may be called in situations where page faults are not allowed (see \autoref{chap:background.kerneldriver.wdm}) \cite{Yosifovich2017}.
 
 \begin{figure}[htb!]
 	\center
@@ -393,10 +390,6 @@ Windows uses the physically available RAM to back its 64-bit address space of vi
 		\node[anchor=west] at (0.25, 2.05) {\footnotesize\texttt{0x00008000'00000000}};
 		\node[anchor=west] at (0.25, 2.95) {\footnotesize\texttt{0xFFFF8000'00000000}};
 		\node[anchor=west] at (0.25, 5)    {\footnotesize\texttt{0xFFFFFFFF'FFFFFFFF}};
-
-		%\draw[arrow] (0, 0) -- (0, 5);
-		%\node[anchor=east, xshift=-4pt] at (0, 0) {Low addresses};
-		%\node[anchor=east, xshift=-4pt] at (0, 5) {High addresses};
 	\end{tikzpicture}
 	\caption[
 		Address space layout for 64-bit Windows 10.
@@ -442,7 +435,7 @@ Windows uses the physically available RAM to back its 64-bit address space of vi
 		Simplified Windows architecture
 	]{
 		Simplified Windows architecture (modified after \cite{Yosifovich2017}).
-		User processes are regular applications. The service process are responsible for hosting Windows services, such as the printer spooler or DNS client. System processes are fixed processes that are not started by the Service Control Manager. The Session Manager and the logon process are examples for system processes.
+		User processes are regular applications. The service processes are responsible for hosting Windows services, such as the printer spooler or DNS client. System processes are fixed processes that are not started by the Service Control Manager. The Session Manager and the logon process are examples for system processes.
 		The subsystem dynamically linked libraries (DLLs) are responsible for translating public API functions into their corresponding internal system service calls. The latter are mostly implemented in Ntdll.dll.
 		% Windows includes several subsystems that ``expose some subset of the base Windows executive system services to application programs'' \cite{Yosifovich2017} through dynamically linked libraries (DLLs).
 		The executive, kernel, and Hardware Abstraction Layer are described in detail later on. 
@@ -487,7 +480,7 @@ Finally, the last component from \autoref{fig:background.kerneldriver.winarchite
 
 \subsection{Windows Kernel Drivers and the Windows Driver Model}
 \label{chap:background.kerneldriver.wdm}
-Windows kernel drivers are modules that can be loaded and run kernel-mode. They are normally found in the form of files with the \texttt{.sys} extension. Drivers can be categorized as follows \cite{Yosifovich2017}:
+Windows kernel drivers are modules that can be loaded and run in kernel mode. They are normally found in the form of files with the \texttt{.sys} extension. Drivers can be categorized as follows \cite{Yosifovich2017}:
 \begin{descitemize}
 	\item[Device drivers] As an interface between hardware and the I/O manager, these make use of the HAL to control retrieving input from or writing output to hardware.
 	\item[File system drivers] These translate file-oriented requests into raw I/O requests.
@@ -522,7 +515,7 @@ In this model, the control over a device is not concentrated at one single drive
 
 The device stack is built by the PnP manager during a process called \emph{device enumeration}. This happens at system boot or when resuming from hibernation, but it can also be triggered manually. During enumeration, the PnP manager constructs a so-called \emph{device tree} that captures the parent-child relationships of devices. A node in this tree represents a physical device and is appropriately called a \emph{device node}, or short \emph{devnode}. When a new device is discovered, its required drivers are loaded (if they have not already been loaded). The drivers are then informed about the new device, and can decide whether they want to be part of the device stack or not \cite{Yosifovich2017}.
 
-For all the drivers of a device, the PnP manager creates objects that are used for managing and representing the relationships between the drivers. These objects form the device stack. They are also a form of device object, however they don't represent a real, physical device, but rather a virtual one. See \autoref{fig:background.kerneldriver.devnode} for an example device node and the objects it is made of. There are the following types of objects in a device node, ordered from bottom to top by their occurrence in a devnode \cite{Yosifovich2017}:
+For all the drivers of a device, the PnP manager creates objects that are used for managing and representing the relationships between the drivers, i.e. the device stack. They are also a form of device object, however they don't represent a real, physical device, but rather a virtual one. See \autoref{fig:background.kerneldriver.devnode} for an example device node and the objects it is made of. There are the following types of objects in a device node, ordered from bottom to top by their occurrence in a devnode \cite{Yosifovich2017}:
 \begin{itemize}
 	\item exactly one \emph{physical device object (PDO)}, created by the bus driver. It is responsible for the physical device interface.
 	\item zero or more \emph{filter device objects (FiDOs)}, created by lower filter drivers (lower being relative to the FDO).
@@ -530,7 +523,7 @@ For all the drivers of a device, the PnP manager creates objects that are used f
 	\item zero or more FiDOs, created by upper filter drivers.
 \end{itemize}
 
-This shows that filter drivers can be places either above the function driver (upper filter drivers) or between the function driver and the bus driver (lower filter drivers). These serve different purposes: ``In most cases, lower-level filter drivers modify the behavior of device hardware. For example, if a device reports to its bus driver that it requires 4 I/O ports when it actually requires 16 I/O ports, a lower-level, device-specific function filter driver could intercept the list of hardware resources reported by the bus driver to the PnP manager and update the count of I/O ports. Upper-level filter drivers usually provide added-value features for a device. For example, an upper-level device filter driver for a disk can enforce additional security checks.'' \cite{Yosifovich2017}
+This shows that filter drivers can be placed either above the function driver (upper filter drivers) or between the function driver and the bus driver (lower filter drivers). These serve different purposes: ``In most cases, lower-level filter drivers modify the behavior of device hardware. For example, if a device reports to its bus driver that it requires 4 I/O ports when it actually requires 16 I/O ports, a lower-level, device-specific function filter driver could intercept the list of hardware resources reported by the bus driver to the PnP manager and update the count of I/O ports. Upper-level filter drivers usually provide added-value features for a device. For example, an upper-level device filter driver for a disk can enforce additional security checks.'' \cite{Yosifovich2017}
 
 \begin{figure}[htb!]
 	\center
@@ -562,7 +555,7 @@ This shows that filter drivers can be places either above the function driver (u
 	\label{fig:background.kerneldriver.devnode}
 \end{figure}
 
-As already hinted at in the description of \autoref{fig:background.kerneldriver.devicestack}, the registry is responsible for storing the information that governs driver loading. Both which drivers are loaded and the order they are loaded in are configured this way. Basically, it is described how exactly the device nodes should be built. \autoref{tbl:background.kerneldriver.registrykeys} lists the registry keys that, together with their subkeys, are relevant for the configuration. In \autoref{chap:ourapproach.final.install}, we will see how some of these registry entries are set up at driver installation.
+As already hinted at in the description of \autoref{fig:background.kerneldriver.devicestack}, the registry is responsible for storing the information that governs driver loading. Which drivers are loaded and the order they are loaded in are both configured this way. Basically, it is described how exactly the device nodes should be built. \autoref{tbl:background.kerneldriver.registrykeys} lists the registry keys that, together with their subkeys, are relevant for the configuration. In \autoref{chap:ourapproach.final.install}, we will see how some of these registry entries are set up at driver installation.
 
 \begin{table}[htb!]
 	\center
@@ -918,7 +911,7 @@ The already mentioned completion routines are a way for drivers to intercept the
 	\caption[
 		Example IRP flow
 	]{
-		Example IRP flow (modified after \cite{Yosifovich2017}). The I/O manager sends an IRP down the device stack of a devnode. It first passes through two upper filter driverss and the function driver, with the latter registering a completion routine. It then passes through two lower filter drivers, with the second of those also registering a completion routing. After the bus driver completes the IRP, it travels back up the device stack. Because only the second lower filter driver and the function driver registered a completion routine, they are the only drivers that the IRP passes through on its way in this direction. The real path of the IRP is slightly more complex than shown in this figure, because normally the I/O manager takes care of routing the IRP from one driver to another \cite{Yosifovich2017}. It is also responsible for calling the completion routines \cite{Wdk}.
+		Example IRP flow (modified after \cite{Yosifovich2017}). The I/O manager sends an IRP down the device stack of a devnode. It first passes through two upper filter drivers and the function driver, with the latter registering a completion routine. It then passes through two lower filter drivers, with the second of those also registering a completion routine. After the bus driver completes the IRP, it travels back up the device stack. Because only the second lower filter driver and the function driver registered a completion routine, they are the only drivers that the IRP passes through on its way in this direction. The real path of the IRP is slightly more complex than shown in this figure, because normally the I/O manager takes care of routing the IRP from one driver to another \cite{Yosifovich2017}. It is also responsible for calling the completion routines \cite{Wdk}.
 	}
 	\label{fig:background.kerneldriver.irpflow}
 \end{figure}

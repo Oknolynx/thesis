@@ -64,7 +64,7 @@ We decided against using UMDF out of performance concerns; as the framework's na
 
 KMDF does not have this problems, but there were other factors that led to our decision against it:
 \begin{itemize}
-	\item We had previously tried another framework that simplified things though abstraction (see \autoref{chap:ourapproach.rejected.fltmgr}) and it had not worked. Therefore it seemed safer to do all the work ourselves, and in return be sure that the framework will not be a reason for failure.
+	\item We had previously tried another framework that simplified things through abstraction (see \autoref{chap:ourapproach.rejected.fltmgr}) and it had not worked. Therefore it seemed safer to do all the work ourselves, and in return be sure that the framework will not be a reason for failure.
 	\item By default, KMDF filter drivers pass all received IRPs to the next driver in the stack \cite{Wdf}. However, our planned approach was as follows: don't pass through anything at first, and then gradually during the development process allow more and more requests to pass through. This is still possible with KMDF, but more work than for a WDM driver.
 	\item One of the biggest selling points of using KMDF is that it handles PnP and Power IRPs for the driver. These are not really relevant to our driver, though (see \autoref{chap:ourapproach.final.otherrequests} for more information on these requests and how our driver handles them). Therefore we would not gain that much by sacrificing total control for reduced complexity, because the hidden complexity is not that relevant in the first place.
 	\item Finally, writing a WDM driver requires a more complete understanding of how the kernel's IRP-based I/O system works. We wanted to learn as much as possible, and for this purpose WDM seemed the better fit.
@@ -298,7 +298,7 @@ DecryptReadBuffer(
 	\caption[
 		Using our AES-XTS implementation to decrypt read sectors
 	]{
-		Using our AES-XTS implementation to decrypt read sectors. \texttt{VolInfo} stores the information received in \texttt{luks2filterstart.exe}'s IOCTL, as described in \autoref{chap:ourapproach.final.init}. \texttt{CryptoInfo} stores the aforementioned \texttt{Xts} structure, which holds all data required for cryptographic operations with a given key, plus two function pointers to a \texttt{Decrypt} and \texttt{Encrypt} routine. The functions these point to depend on which key size (128 or 256 bits) is used. \texttt{OrigByteOffset} is the offset that the Read IRP originally contained (as opposed to the offset stored after \texttt{luks2flt}'s modifications). The \texttt{ToLeBytes} function converts the sector number to its 64-bit little-endian representation (this was introduced as the ``plain64'' IV generator in \autoref{chap:background.luks2.using}).
+		Using our AES-XTS implementation to decrypt read sectors. \texttt{VolInfo} stores the information received in \texttt{luks2filterstart.exe}'s IOCTL, as described in \autoref{chap:ourapproach.final.init}. \texttt{CryptoInfo} stores the aforementioned \texttt{Xts} structure, which holds all data required for cryptographic operations with a given key, plus two function pointers to a \texttt{Decrypt} and \texttt{Encrypt} routine. The values of these pointers (i.e. the functions they point to) depend on the key size (128 or 256 bits). \texttt{OrigByteOffset} is the offset that the Read IRP originally contained (as opposed to the offset stored after \texttt{luks2flt}'s modifications). The \texttt{ToLeBytes} function converts the sector number to its 64-bit little-endian representation (this was introduced as the ``plain64'' IV generator in \autoref{chap:background.luks2.using}).
 	}
 	\label{fig:ourapproach.final.decryptread}
 \end{figure}
@@ -333,7 +333,7 @@ Some of the existing minor function codes must be supported by all (non-legacy) 
 %	* REMOVE_DEVICE - free hardware resources, pass the IRP down the stack, and afterwards detach from the device stack and free device-specific allocations
 %	* DEVICE_USAGE_NOTIFICATION - ``The system sends this IRP when it is creating or deleting a paging file, dump file, or hibernation file'' \cite{Kerneldriver}. We don't care about tehc reation or deletion of paging, crash dump, or hibernation file on a volume. Let the other drivers in the device stack handle this.
 
-\paragraph{Create, Close and Cleanup Requests} A Create request is sent when a handle to a file representing a device (e.g. \texttt{\textbackslash Device\textbackslash HarddiskVolume1}) is requested e.g. by a user mode program. Conversely, the Close and Cleanup requests are sent when the last handle to a device is closed, so that drivers may cancel outstaning requests and deallocate resources. The difference between these two is that Cleanup requests are sent regardless of whether there are any outstanding I/O requests. Close requests are only sent after all outstanding I/O requests have either been cancelled or completed \cite{Kerneldriver}. \texttt{luks2flt} does not impose any restrictions on opening handles and does not allocate any resources for handles. It just passes these requests on to the next driver, which is therefore also responsible for cancelling any outstanding operations. Decompilation of the BitLocker driver shows that, except for some special cases, does the same.
+\paragraph{Create, Close and Cleanup Requests} A Create request is sent when a handle to a file representing a device (e.g. \texttt{\textbackslash Device\textbackslash HarddiskVolume1}) is requested e.g. by a user mode program. Conversely, the Close and Cleanup requests are sent when the last handle to a device is closed, so that drivers may cancel outstanding requests and deallocate resources. The difference between these two is that Cleanup requests are sent regardless of whether there are any outstanding I/O requests. Close requests are only sent after all outstanding I/O requests have either been cancelled or completed \cite{Kerneldriver}. \texttt{luks2flt} does not impose any restrictions on opening handles and does not allocate any resources for handles. It just passes these requests on to the next driver, which is therefore also responsible for cancelling any outstanding operations. Decompilation of the BitLocker driver shows that, except for some special cases, does the same.
 
 \paragraph{Power, Flush Buffers, Shutdown, and System Control Requests} These are not relevant to our driver and are therefore just passed on to the next driver \cite{Kerneldriver}:
 \begin{itemize}
@@ -383,7 +383,7 @@ To completely verify our assumption that only the metadata becomes corrupted and
 
 \section{Security and Privacy Considerations}
 \label{chap:ourapproach.security}
-Security and privacy of confidential data was not a focus in our work, but we still thought these topics. Following are our considerations on them.
+Security and privacy of confidential data was not a focus in our work, but we still thought about these topics. Following are our considerations on them.
 
 \paragraph{Security}
 As every kernel component has access to the complete physical RAM and the highest possible privileges, bugs in it can lead to the whole system crashing, or worse, being fully compromised. Especially the handling of untrusted input must be done with care.
@@ -394,7 +394,7 @@ To send IOCTLs, a user must open a device handle, for which they need administra
 
 As we understand it, when a Write IRP arrives at our driver, the values of parameters like the buffer size have already been checked by Windows. The data to be written is only touched by the encryption routines. The implementations of the algorithms are not our own and, assuming we translated them correctly from Rust to C, should not contain vulnerabilities.
 
-Of course, these claims must be verified by an independent party, should certainty be required (i.e. if someone wanted to \texttt{luks2flt} in a production environment).
+Of course, these claims must be verified by an independent party, should certainty be required (i.e. if someone wanted to use \texttt{luks2flt} in a production environment).
 
 \paragraph{Privacy}
 As we have discussed in \autoref{chap:otherapproaches}, all described implementations take care to overwrite memory containing sensitive data before deallocating it. Most importantly, they all zero out any cryptographic keys when not needed any more.

@@ -1,12 +1,27 @@
 \chapter{Conclusion}
 \label{chap:conclusion}
+We described the design, implementation and functionality of our driver as well as its I/O performance compared to other disk encryption technologies. Therefore, it is now time to evaluate whether we reached our goal as introduced in \autoref{chap:introduction}: implementing LUKS2 support on Windows, with reasonable effort and usable performance.
 
-\todo{from \autoref{chap:ourapproach.rejected.wdf}}: ``Now that our WDM driver is finished, it would be interesting to compare it to an equivalent that was written using KMDF, both its architecture and performance. This is left as an exercise to the curious reader; \autoref{chap:ourapproach.final} should be a good starting point.''
+We made it possible to read the contents of LUKS2 volumes on Windows. Unfortunately, we had to disable write support because of it corrupting volumes. The goal of supporting LUKS2 on Windows can therefore be considered as only partially achieved. Then again, even more debugging than we already did to fix this problem would have clashed with the resolution of reasonable effort.
 
-\todo{store config in registry, don't attach to non-LUKS2 volumes through that?} also mentioned in \autoref{chap:ourapproach.final.init}
+The performance evaluation of driver also paints a mixed picture: while it falls behind both compared technologies for sequential reading, it overtakes VeraCrypt in random-access reading (except for single-threaded sequential requests). As this is only a prototype with no extra focus on optimized performance, compared to long-existing big projects, we view the goal of usable performance as successfully met. Furthermore, the version of \texttt{luk2flt} used in the virtual machine experiments had more compiler optimizations enabled and showed even better performance. Its sequential read rate was comparable to VeraCrypt's for large block sizes. Thus it seems that further work in trying to gradually enable more compiler optimizations again, without introducing crashes, may improve the read rates on real hardware, too.
 
-\todo{Check whether re-enabling some of the optimization options we disabled in \autoref{chap:performance.hwexperiments.readrateoverblocksize} can increase performance?}
+All in all, we consider our goal reached, but suggest the following improvements (some of them have already been mentioned in previous chapters):
+\begin{itemize}
+	\item To find the cause of write support corrupting volumes, examining the filesystem metadata may help. We already presented our theory that this is the part of the volume that gets corrupted in \autoref{chap:ourapproach.final.writeproblem} and justified how it matches with our observations.
+	\item As explained above, fine-tuning the compiler optimization settings may further improve performance.
+	\item Another way to improve the sequential read performance may be introducing a read ahead cache similar to VeraCrypt.
+	\item The current way of attaching to all volumes at boot is not optimal. As noted in \autoref{chap:ourapproach.final.init}, using the Windows registry to configure which volumes to attach to may be desirable.
+	\item \autoref{chap:ourapproach.security} stated the possible problem that \texttt{luks2filterstart.exe} does not clear sensitive information from its memory. An implementation meant for production usage should fix this issue.
+\end{itemize}
 
-\todo{from \autoref{chap:ourapproach.security}: luks2filterstart.exe does not clear its memory}
+We also identify the following possible further research topics:
+\begin{itemize}
+	\item As mentioned in \autoref{chap:ourapproach.rejected.wdf}, comparing the process of implementing a driver with the same functionality using the KMDF would be interesting. Both from an architecture and performance point of view, this may yield useful insights.
+	\item In \autoref{chap:performance.hwexperiments.readrateoverblocksize}, we formulated the theory that VeraCrypt's fragmenting of larger blocks into 256 KiB blocks may hinder its sequential read performance. We also theorized that its queuing is responsible for its worse performance random-access read performance when multiple requests at once come in. Both suspicions could be tested by appropriately modifying VeraCrypt and re-examining its performance
+	\item The behaviour of read rates over time was only briefly analysed by us. It may be of interest to study this in more detail. Evaluating statistics on the latencies of the different drivers may be a fitting companion topic (the \texttt{fio} tool already provides such statistics, but we did not evaluate them).
+\end{itemize}
 
 \todo{make some of the bibliography entries shorter/nicer}
+
+\todo{at the very end: look into improving figure placement and over-/underfull hboxes}
