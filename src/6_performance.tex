@@ -2,13 +2,13 @@
 \label{chap:performance}
 To compare the performance of our driver to BitLocker and VeraCrypt, we conducted several experiments measuring the read rates for both sequential and random access. Preliminary tests were done in a virtual machine, and after some optimizations, we tested more extensively on real hardware. Finally, we also measured how the read rates behave over time.
 
-\todo{\autoref{app:onlinereferences} describes how to obtain copies of the data collected in our measurements. It also links to a Git repository containing the code that generated the figures presented in this section.}
+\autoref{app:onlinereferences} describes how to obtain copies of both the data collected in our measurements and the code that generated the figures presented in this section.
 
 \section{Experimental Setup}
 \label{chap:performance.setup}
 Both the setup for the virtual machine and the real hardware will be described in this section. They are mostly the same, so unless stated otherwise, the contents in this section apply to both.
 
-Both configurations used a fresh Windows 10 build 19043.928 install. The virtual machine ran in Oracle VirtualBox 6.1.22 with 8 GiB of virtual RAM (backed by 16 GiB DDR4 RAM), 4 virtual cores (backed by a Intel Core i7-7700K), and two virtual disks (backed by a 250 GB Samsung SSD 850 EVO). The real machine had 8 GiB DDR3 RAM, an Intel Core i7-3770 quad core with simultaneous multithreading, and a 233 GiB SanDisk SDSSDH3250G.
+Both configurations used a fresh Windows 10 build 19043.928 install. The virtual machine ran in Oracle VirtualBox 6.1.22 with 8 GiB of virtual RAM (backed by 16 GiB DDR4 RAM), 4 virtual cores (backed by a Intel Core i7-7700K), and two virtual disks (backed by a 232 GiB Samsung SSD 850 EVO). The real machine had 8 GiB DDR3 RAM, an Intel Core i7-3770 quad core with simultaneous multithreading, and a 233 GiB SanDisk SDSSDH3250G.
 
 For each encryption technique featured in our benchmarks we created a separate 5 GiB FAT32 volume on the same disk, as shown in \autoref{fig:performance.setup.disklayout}. Every encrypted volume contained the same file, \texttt{random.bin} (4 GiB of random data). We configured BitLocker to use the new AES-XTS mode, all other settings were left unchanged. For VeraCrypt, we also used AES-XTS with SHA-256 and also mounted the volume as read-only after copying the \texttt{random.bin} file to it.
 
@@ -87,10 +87,10 @@ We observe the following:
 \begin{itemize}[beginpenalty=10000]
 	\item BitLocker's sequential read rate is greater than our driver's and VeraCrypt's for all tested block sizes.
 	\item VeraCrypt performs noticeably better at sequential reading than \texttt{luks2flt}'s optimized version, but the difference decreases with increasing block size. VeraCrypt's read rate peaks at 256 KiB, but our driver's rate continues to grow after that.
-	\item The more optimized version has a significantly higher sequential read rate than the first version, especially at larger block sizes. At 4 KiB, the increase in performance is about 21\%; at 8192 KiB the more optimized version has about a 59\% higher read rate.
+	\item The more optimized version of \texttt{luks2flt} has a significantly higher sequential read rate than the first version, especially at larger block sizes. At 4 KiB, the increase in performance is about 21\%; at 8192 KiB the more optimized version has about a 59\% higher read rate.
 \end{itemize}
 
-\autoref{fig:performance.vmexperiments.rand} shows the random access read rates of the four drivers for different block sizes. BitLocker always has the highest rate, starting at 16 MiB/s and climbing up to 388 MiB/s at 8192 KiB blocks, with a little stagnation and decrease in performance at 256 and 512 KiB. VeraCrypt has the lowest read rate of 10 MiB/s at 4 KiB, but it steadily grows: it rises to third place at 256 KiB, second place at 1024 KiB, and falls back to third at 8192 KiB, with a maximum of 291 MiB/s. The two versions of \texttt{luks2flt} both start at 16 MiB/s and rise for block sizes up to 128 KiB, switching their roles of second and third place. After that, the optimized version continues to improve its read rate up to the final value of 300 MiB/s, temporarily falling behind VeraCrypt. The less optimized version's rate first decreases a bit, then rises abruptly, and then decreasing a bit again, with a maximum value of 144 MiB/s at 1024 KiB.
+\autoref{fig:performance.vmexperiments.rand} shows the random-access read rates of the four drivers for different block sizes. BitLocker always has the highest rate, starting at 16 MiB/s and climbing up to 388 MiB/s at 8192 KiB blocks, with a little stagnation and decrease in performance at 256 and 512 KiB. VeraCrypt has the lowest read rate of 10 MiB/s at 4 KiB, but it steadily grows: it rises to third place at 256 KiB, second place at 1024 KiB, and falls back to third at 8192 KiB, with a maximum of 291 MiB/s. The two versions of \texttt{luks2flt} both start at 16 MiB/s and rise for block sizes up to 128 KiB, switching their roles of second and third place. After that, the optimized version continues to improve its read rate up to the final value of 300 MiB/s, temporarily falling behind VeraCrypt. The less optimized version's rate first decreases a bit, then rises abruptly, and then decreasing a bit again, with a maximum value of 144 MiB/s at 1024 KiB.
 
 \begin{figure}[htb!]
 	\center
@@ -98,7 +98,7 @@ We observe the following:
 	\caption[
 		Random-access read rates in the virtual machine
 	]{
-		Random-access read rates in the virtual machine. See \autoref{fig:performance.vmexperiments.rand} for how we collected the data.
+		Random-access read rates in the virtual machine. See \autoref{fig:performance.vmexperiments.seq} for how we collected the data.
 	}
 	\label{fig:performance.vmexperiments.rand}
 \end{figure}
@@ -115,7 +115,7 @@ Combining our observations from both access patterns, we close with the followin
 \begin{itemize}[beginpenalty=10000]
 	\item BitLocker is the best-performing driver, both at sequential and random-access reading. This is not really surprising, as it is not a fair competition: one driver is the proprietary product of Microsoft, who also wrote the operating system running the driver; and the other two are open source projects by third parties. Microsoft's driver profits from their expertise in Windows' inner workings, and can also take advantage of undocumented internals.
 	\item VeraCrypt has a higher sequential read rate than \texttt{luks2flt}, with the difference decreasing for larger block sizes. The former is probably because of VeraCrypt's read ahead caching, as \texttt{luks2flt} does not perform any caching. The latter may be because of VeraCrypt's fragmenting of larger blocks into 256 KiB blocks. This means that the I/O performed by the driver can only profit so much from block sizes larger than 256 KiB. This theory is supported by the fact that VeraCrypt reaches its peak sequential read rate at exactly this block size. As already mentioned in \autoref{chap:otherapproaches.veracrypt.peeking}, the fragmenting is done to overlap I/O and cryptographic operations. However, the alleged gains from this overlapping do not seem to be able to cancel out the losses by capping the effective block size at 256 KiB.
-	\item For random-access reads, the performance difference between VeraCrypt and \texttt{luks2flt} is smaller, with our driver showing higher read rates most of the time. This supports the thesis that VeraCrypt's performance advantage for sequential access stems from its caching: for random access reads the cache is not effective, and therefore the advantage vanishes.
+	\item For random-access reads, the performance difference between VeraCrypt and \texttt{luks2flt} is smaller, with our driver showing higher read rates most of the time. This supports the thesis that VeraCrypt's performance advantage for sequential access stems from its caching: for random-access reads the cache is not effective, and therefore the advantage vanishes.
 	\item The changed compiler optimization settings have a significant impact on our driver's read performance, regardless of the access pattern.
 \end{itemize}
 
@@ -155,7 +155,7 @@ We observe the following:
 	\item \texttt{luks2flt} never reaches the performance of the other two drivers. BitLocker has an up to 156\% higher read rate (at 128 KiB), VeraCrypt up to 134\% (at 128 KiB).
 \end{itemize}
 
-\autoref{fig:performance.hwexperiments.optseq} contains the random-access read rates of the three drivers. BitLocker starts with a read rate of 19 MiB/s and, except for a dent at 4096 KiB, continually rises to a maximum of 335 MiB/s. \texttt{luks2flt}'s rate also begins at 19 MiB/s and steadily climbs to 195 MiB/s. VeraCrypt's rate at 4 KiB is 13 MiB/s, and then rises up to a value of 301 MiB/s at 8192 KiB. 
+\autoref{fig:performance.hwexperiments.optrand} contains the random-access read rates of the three drivers. BitLocker starts with a read rate of 19 MiB/s and, except for a dent at 4096 KiB, continually rises to a maximum of 335 MiB/s. \texttt{luks2flt}'s rate also begins at 19 MiB/s and steadily climbs to 195 MiB/s. VeraCrypt's rate at 4 KiB is 13 MiB/s, and then rises up to a value of 301 MiB/s at 8192 KiB. 
 
 \begin{figure}[htb!]
 	\center
@@ -193,7 +193,7 @@ We observe the following:
 	\item At 4096 KiB, our driver has a slightly higher (1\%) read rate than VeraCrypt, but for smaller blocks, VeraCrypt is up to 116\% faster (at 256 KiB).
 \end{itemize}
 
-\autoref{fig:performance.hwexperiments.optseqqueue} shows the random-access read rates of the three drivers for an \texttt{iodepth} of 16. BitLocker's read rate at 4 KiB is 61 MiB/s. It rises continuously, although only very slowly for blocks larger than 256 KiB. Its maximum is 505 MiB/s at 8192 KiB. \texttt{luks2flt}'s rate starts at 58 MiB/s and rises more or less continuously until it reaches it maximum of 414 MiB/s. VeraCrypt begins with a rate of 25 MiB/s and climbs to its highest value of 364 MiB/s for the largest block size.
+\autoref{fig:performance.hwexperiments.optrandqueue} shows the random-access read rates of the three drivers for an \texttt{iodepth} of 16. BitLocker's read rate at 4 KiB is 61 MiB/s. It rises continuously, although only very slowly for blocks larger than 256 KiB. Its maximum is 505 MiB/s at 8192 KiB. \texttt{luks2flt}'s rate starts at 58 MiB/s and rises more or less continuously until it reaches it maximum of 414 MiB/s. VeraCrypt begins with a rate of 25 MiB/s and climbs to its highest value of 364 MiB/s for the largest block size.
 
 \begin{figure}[htb!]
 	\center
@@ -247,7 +247,7 @@ We observe the following:
 
 We observe the following:
 \begin{itemize}[beginpenalty=10000]
-	\item BitLocker is always the fastest driver, with an up to 33\% higher random-access read rate than luks2flt (at 256 KiB), and up to 74.0\% higher than VeraCrypt (at 8 KiB).
+	\item BitLocker is always the fastest driver, with an up to 33\% higher random-access read rate than luks2flt (at 256 KiB), and up to 74\% higher than VeraCrypt (at 8 KiB).
 	\item All drivers reach their respective maximum rate at a block size of 256 KiB.
 	\item \texttt{luks2flt} always has a higher read rate than VeraCrypt, with an up to 69\% advantage (at 4 KiB).
 \end{itemize}

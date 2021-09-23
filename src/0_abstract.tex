@@ -1,5 +1,3 @@
 \begin{abstract}
-	This thesis \todo{todo}
-	\todo{mention disabled write support}
-	\todo{mention usage of fio}
+	This thesis presents an implementation of read-only support for LUKS2-encrypted volumes on the Windows operating system. To our knowledge, this is the first solution that enables access to LUKS2 volumes using Windows. We implemented a WDM filter driver that intercepts all read requests from an encrypted volume, transparently decrypting them such that the contained file system can be recognized. The configuration of the driver is done using our user mode command line tool. To test and classify our driver's read rate, we compared it to BitLocker's and VeraCrypt's. Using the \texttt{fio} tool, we measured both sequential and random-access read performance. We found that for large block sizes our driver reaches up to 91\% of BitLocker's and 101\% of VeraCrypt's sequential read rate; and up to 92\% of BitLocker's and 134\% of VeraCrypt's random-access read rate.
 \end{abstract}
