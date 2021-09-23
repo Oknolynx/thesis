@@ -60,7 +60,7 @@ bs=${BLOCKSIZE}
 
 We also looked at other I/O benchmarking programs, but found that they all required write access. This unfortunately made them unfit for our cause.
 
-We wrote a PowerShell script to automate running jobs with different parameters. Its task was to set the environment variables used in the job files to their respective values and to invoke \texttt{fio}, pointing it to the correct job file. A sample invocation looks like this: \texttt{fio ---readonly ---output-format=json ---output luks2flt.json luks2flt.fio}. The \texttt{---readonly} option is necessary because even though we only specified read operations, execution would fail for read-only volumes. The data visualized by the graphs in the following sections was taken from \texttt{fio}'s JSON output.
+We wrote a PowerShell script to automate running jobs with different parameters. Its task was to set the environment variables used in the job files to their respective values and to invoke \texttt{fio}, pointing it to the correct job file. A sample invocation looks like this: \texttt{fio ---readonly ---output-format=json ---output luks2flt.json luks2flt.fio}.\\The \texttt{---readonly} option is necessary because even though we only specified read operations, execution would fail for read-only volumes. The data visualized by the graphs in the following sections was taken from \texttt{fio}'s JSON output.
 
 \section{Virtual Machine Experiments}
 \label{chap:performance.vmexperiments}
@@ -115,12 +115,12 @@ Combining our observations from both access patterns, we close with the followin
 \begin{itemize}[beginpenalty=10000]
 	\item BitLocker is the best-performing driver, both at sequential and random-access reading. This is not really surprising, as it is not a fair competition: one driver is the proprietary product of Microsoft, who also wrote the operating system running the driver; and the other two are open source projects by third parties. Microsoft's driver profits from their expertise in Windows' inner workings, and can also take advantage of undocumented internals.
 	\item VeraCrypt has a higher sequential read rate than \texttt{luks2flt}, with the difference decreasing for larger block sizes. The former is probably because of VeraCrypt's read ahead caching, as \texttt{luks2flt} does not perform any caching. The latter may be because of VeraCrypt's fragmenting of larger blocks into 256 KiB blocks. This means that the I/O performed by the driver can only profit so much from block sizes larger than 256 KiB. This theory is supported by the fact that VeraCrypt reaches its peak sequential read rate at exactly this block size. As already mentioned in \autoref{chap:otherapproaches.veracrypt.peeking}, the fragmenting is done to overlap I/O and cryptographic operations. However, the alleged gains from this overlapping do not seem to be able to cancel out the losses by capping the effective block size at 256 KiB.
-	\item For random-access reads, the performance difference between VeraCrypt and \texttt{luks2flt} is smaller, with our driver showing higher read rates most of the time. This supports the thesis that VeraCrypt's performance advantage for sequential access stems from its caching: for random-access reads the cache is not effective, and therefore the advantage vanishes.
-	\item The changed compiler optimization settings have a significant impact on our driver's read performance, regardless of the access pattern.
+	\item For random-access reads, the performance difference between \texttt{luks2flt} and VeraCrypt is smaller, with our driver showing higher read rates most of the time. This supports the thesis that VeraCrypt's performance advantage for sequential access stems from its caching: for random-access reads the cache is not effective, and therefore the advantage vanishes.
+	\item The changed compiler optimization settings had significant impact on our driver's read performance, regardless of the access pattern.
 \end{itemize}
 
 \paragraph{Another Optimization Attempt}
-We also tried optimizing \texttt{luks2flt}'s performance by restricting its cryptographic capabilities to AES-256-XTS and dropping support for AES-128-XTS. This enabled removing some \texttt{if}-\texttt{else} constructs that dispatched de-/encryption functions based on whether AES-128 or AES-256 was used. Even though these conditionals were located in a performance critical section, we found no significant read rate changes. Our theory for why this was the case is the following: in this setup, our driver was only ever used for one LUKS2 partition and therefore always took the same path through the \texttt{if}-\texttt{else} (either always AES-128 or always AES-256). This trained the CPU's branch prediction on this one specific path. Thus, after a short training phase, the CPU always speculatively executed the correct path, resulting in the same performance as without the \texttt{if}-\texttt{else}. The same reasoning applies for a use case where \texttt{luks2flt} is filtering multiple volumes that all use the same AES-XTS variant, although we did not test this.
+We also tried optimizing \texttt{luks2flt}'s performance by restricting its cryptographic capabilities to AES-256-XTS and dropping support for AES-128-XTS. This enabled removing some \texttt{if}-\texttt{else} constructs that dispatched de- and encryption functions based on whether AES-128 or AES-256 was used. Even though these conditionals were located in a performance critical section, we found no significant read rate changes. Our theory for why this was the case is the following: in this setup, our driver was only ever used for one LUKS2 partition and therefore always took the same path through the \texttt{if}-\texttt{else} (either always AES-128 or always AES-256). This trained the CPU's branch prediction on this one specific path. Thus, after a short training phase, the CPU always speculatively executed the correct path, resulting in the same performance as without the \texttt{if}-\texttt{else}. The same reasoning applies for a use case where \texttt{luks2flt} is filtering multiple volumes that all use the same AES-XTS variant, although we did not test this.
 
 \section{Real Hardware Experiments}
 \label{chap:performance.hwexperiments}
@@ -193,8 +193,6 @@ We observe the following:
 	\item At 4096 KiB, our driver has a slightly higher (1\%) read rate than VeraCrypt, but for smaller blocks, VeraCrypt is up to 116\% faster (at 256 KiB).
 \end{itemize}
 
-\autoref{fig:performance.hwexperiments.optrandqueue} shows the random-access read rates of the three drivers for an \texttt{iodepth} of 16. BitLocker's read rate at 4 KiB is 61 MiB/s. It rises continuously, although only very slowly for blocks larger than 256 KiB. Its maximum is 505 MiB/s at 8192 KiB. \texttt{luks2flt}'s rate starts at 58 MiB/s and rises more or less continuously until it reaches it maximum of 414 MiB/s. VeraCrypt begins with a rate of 25 MiB/s and climbs to its highest value of 364 MiB/s for the largest block size.
-
 \begin{figure}[htb!]
 	\center
 	\includegraphics[scale=1]{../fig/performance.hwexperiments.optrandqueue.pdf}
@@ -205,6 +203,8 @@ We observe the following:
 	}
 	\label{fig:performance.hwexperiments.optrandqueue}
 \end{figure}
+
+\autoref{fig:performance.hwexperiments.optrandqueue} shows the random-access read rates of the three drivers for an \texttt{iodepth} of 16. BitLocker's read rate at 4 KiB is 61 MiB/s. It rises continuously, although only very slowly for blocks larger than 256 KiB. Its maximum is 505 MiB/s at 8192 KiB. \texttt{luks2flt}'s rate starts at 58 MiB/s and rises more or less continuously until it reaches it maximum of 414 MiB/s. VeraCrypt begins with a rate of 25 MiB/s and climbs to its highest value of 364 MiB/s for the largest block size.
 
 We observe the following:
 \begin{itemize}[beginpenalty=10000]
@@ -340,8 +340,6 @@ We observe the following:
 	\item \texttt{luks2flt} has the least variation in read rate values. Bitlocker comes close, but its outliers are further away from the mean. VeraCrypt's read rate has significantly more variation over time than the other drivers'.
 \end{itemize}
 
-\autoref{fig:performance.hwexperiments.randovertime} shows the drivers' random-access read rates over time. BitLocker's read rates switches between lying in the 98 to 100 MiB/s range and the 94 to 96 MiB/s range, with some mostly downward spikes. \texttt{luks2flt} has a read rate that concentrates around either 64 MiB/s or 69 MiB/s, with some spikes in both directions. VeraCrypt's rate generally oscillates around 61 MiB/s, with exceptions, mostly at the beginning and the end of the run.
-
 \begin{figure}[htb!]
 	\center
 	\includegraphics[scale=1]{../fig/performance.hwexperiments.randovertime.pdf}
@@ -352,6 +350,8 @@ We observe the following:
 	}
 	\label{fig:performance.hwexperiments.randovertime}
 \end{figure}
+
+\autoref{fig:performance.hwexperiments.randovertime} shows the drivers' random-access read rates over time. BitLocker's read rates switches between lying in the 98 to 100 MiB/s range and the 94 to 96 MiB/s range, with some mostly downward spikes. \texttt{luks2flt} has a read rate that concentrates around either 64 MiB/s or 69 MiB/s, with some spikes in both directions. VeraCrypt's rate generally oscillates around 61 MiB/s, with exceptions, mostly at the beginning and the end of the run.
 
 \autoref{fig:performance.hwexperiments.randovertimebox} shows the distribution of the read rates from \autoref{fig:performance.hwexperiments.randovertime}. BitLocker's median read rate is 99 MiB/s, the lower quartile is 95 MiB/s, and the upper quartile is 99 MiB/s. The whiskers are at 91 and 101 MiB/s. The 69 to 113 MiB/s range contains all outliers, except for one at 35 MiB/s. The median of \texttt{luks2flt}'s read rate is 65 MiB/s, the lower quartile is 64 MiB/s, and the upper quartile is 69 MiB/s. The whiskers are at 57 and 75 MiB/s, and there are some outliers between 44 and 80 MiB/s. VeraCrypt has a median rate of 61 MiB/s, with the lower quartile being 60 MiB/s and the upper quartile being 61 MiB/s. The whiskers are at 57 and 75 MiB/s, and there are some outliers in the 32 to 71 MiB/s range.
 
